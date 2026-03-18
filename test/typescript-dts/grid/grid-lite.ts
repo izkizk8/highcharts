@@ -94,6 +94,16 @@ function test_grid() {
         columns: [{
             id: 'hidden',
             enabled: false
+        }],
+        responsive: {
+            rules: [{
+                condition: {
+                    minHeight: 500
+                },
+                gridOptions: {
+                    header: ['x']
+                }
+            }]
         }]
     });
 

@@ -707,16 +707,6 @@ export class LocalDataProvider extends DataProvider {
     }
 
     /**
-     * Sets the current presentation table.
-     *
-     * @param table
-     * The table to use as current presentation table.
-     */
-    public setPresentationTable(table?: DataTable): void {
-        this.presentationTable = table;
-    }
-
-    /**
      * Checks if the object is an instance of DataConnector.
      *
      * @param connector

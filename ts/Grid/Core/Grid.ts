@@ -396,15 +396,6 @@ export class Grid {
         }
     }
 
-    public set presentationTable(table: DataTable | undefined) {
-        const dp = this.dataProvider as {
-            setPresentationTable?: (dataTable?: DataTable) => void;
-        };
-        if (dp.setPresentationTable) {
-            dp.setPresentationTable(table);
-        }
-    }
-
     /*
      * Initializes the accessibility controller.
      */

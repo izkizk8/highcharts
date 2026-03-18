@@ -161,6 +161,7 @@ export type ColumnEventCallback = (this: Column) => void;
  * Callback function to be called when a grid event is triggered.
  */
 export type GridEventCallback = (this: Grid, e: AnyRecord) => void;
+
 /**
  * Events related to the cells.
  */
@@ -273,7 +274,6 @@ export interface GridEvents {
      * update.
      */
     afterRedraw?: GridEventCallback;
-
 }
 
 declare module '../Core/Options' {

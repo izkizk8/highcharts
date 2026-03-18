@@ -3,9 +3,6 @@
 Highcharts Grid supports context menus for table body cells. When enabled, Grid
 shows a context menu on right-click for table body cells.
 
-This is a v1 foundation intended to be extended over time (for example with
-built-in actions like add/delete row, hide column, etc.).
-
 ## Configure a cell context menu
 
 The context menu is configured at the cell level:
