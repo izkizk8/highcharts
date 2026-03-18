@@ -1959,8 +1959,8 @@ class Tooltip {
         if (renderer && container) {
             const { scrollLeft = 0, scrollTop = 0 } = chart
                 .scrollablePlotArea?.scrollingContainer || {};
-            pos.x += scrollLeft + left - distance;
-            pos.y += scrollTop + top - distance;
+            pos.x += scrollLeft + left;
+            pos.y += scrollTop + top;
 
             // Pad it by the border width and distance. Add 2 to make room for
             // the default shadow (#19314).
