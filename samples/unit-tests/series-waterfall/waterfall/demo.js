@@ -100,19 +100,16 @@ QUnit.test('General waterfall tests', function (assert) {
         2,
         'Graph path should not be drawn for points outside of the extremes.'
     );
-});
 
-QUnit.test('Waterfall series with broken axis', function (assert) {
-    const chart = Highcharts.chart('container', {
-        chart: {
-            type: 'waterfall'
-        },
+    // Waterfall with broken axis
+    chart.update({
         yAxis: {
             breaks: [{
                 from: -10,
                 to: -5,
                 breakSize: 1
-            }]
+            }],
+            max: 0
         },
         series: [{
             data: [{
@@ -121,7 +118,9 @@ QUnit.test('Waterfall series with broken axis', function (assert) {
                 y: -5
             }]
         }]
-    });
+    }, false);
+
+    chart.xAxis[0].setExtremes(null, null);
 
     assert.close(
         chart.series[0].points[0].graphic.attr('height'),
@@ -136,5 +135,33 @@ QUnit.test('Waterfall series with broken axis', function (assert) {
         chart.series[0].points[0].graphic.attr('height'),
         0.5,
         'Second point should start where the first point ends, #22330.'
+    );
+
+    // Stacked waterfall with broken axis
+    chart.addSeries({
+        stacking: 'normal',
+        data: [
+            {
+                y: -4
+            }, {
+                y: -2
+            }
+        ]
+    });
+
+    assert.close(
+        chart.series[1].points[0].graphic.attr('height'),
+        chart.yAxis[0].toPixels(-4, true),
+        0.5,
+        'First point of the second stacked should have correct height, #22330.'
+    );
+
+    assert.close(
+        chart.series[1].points[1].graphic.attr('y'),
+        chart.series[0].points[0].graphic.attr('height') +
+        chart.series[1].points[0].graphic.attr('height'),
+        0.5,
+        `Second point of the second stack should start where the first stack
+        ends, #22330.`
     );
 });

@@ -706,28 +706,28 @@ addEvent(WaterfallSeries, 'afterColumnTranslate', function (): void {
                     hPos = y;
                 } else {
                     yPos = y;
-                    hPos = y - pointY;
+                    hPos = (pointY >= 0) ? (y - pointY) : (y + pointY);
                 }
 
                 point.below = yPos <= threshold;
 
-                box.y = yAxis.translate(
+                const translatedYPos = yAxis.translate(
                     yPos,
                     false,
                     true,
                     false,
                     true
                 );
-                box.height = Math.abs(
-                    box.y -
-                    yAxis.translate(
-                        hPos,
-                        false,
-                        true,
-                        false,
-                        true
-                    )
+                const translatedHPos = yAxis.translate(
+                    hPos,
+                    false,
+                    true,
+                    false,
+                    true
                 );
+
+                box.y = translatedYPos;
+                box.height = translatedHPos - translatedYPos;
 
                 const dummyStackItem = yAxis.waterfall?.dummyStackItem;
                 if (dummyStackItem) {
@@ -840,12 +840,12 @@ addEvent(WaterfallSeries, 'afterColumnTranslate', function (): void {
                 previousY += yValue;
                 point.below = previousY < threshold;
             }
+        }
 
-            // #3952 Negative sum or intermediate sum not rendered correctly
-            if (box.height < 0) {
-                box.y += box.height;
-                box.height *= -1;
-            }
+        // #3952 Negative sum or intermediate sum not rendered correctly
+        if (box.height < 0) {
+            box.y += box.height;
+            box.height *= -1;
         }
 
         point.plotY = box.y;
