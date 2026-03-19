@@ -110,13 +110,13 @@
         "@typescript-eslint/no-unused-vars": ["error", { "vars": "all", "args": "after-used" }],
         "@typescript-eslint/no-use-before-define": 0,
         "@typescript-eslint/no-useless-constructor": 2,
-        "@typescript-eslint/prefer-as-const": 1, // @todo
+        "@typescript-eslint/prefer-as-const": 2, // @todo
         "@typescript-eslint/prefer-includes": 0, // @todo
         "@typescript-eslint/prefer-optional-chain": 0, // @todo
         "@typescript-eslint/prefer-regexp-exec": 0, // @todo
         "@typescript-eslint/prefer-string-starts-ends-with": 0, // @todo
         "@typescript-eslint/restrict-plus-operands": 0,
-        "@typescript-eslint/restrict-template-expressions": 1, // @todo
+        "@typescript-eslint/restrict-template-expressions": 2,
         "@typescript-eslint/unbound-method": 0, // @todo
         "@stylistic/indent": [
             "error",
@@ -128,9 +128,9 @@
         ],
         "@stylistic/semi": 2,
         "@highcharts/highcharts/doclet-apioption-last": 2,
-        "@highcharts/highcharts/no-highcharts-namespace": 1, // @todo
+        "@highcharts/highcharts/no-highcharts-namespace": 2,
         "@highcharts/highcharts/no-highcharts-object": 2,
-        "@highcharts/highcharts/no-mixin": 1, // @todo
+        "@highcharts/highcharts/no-mixin": 2,
         "@highcharts/highcharts/no-private-constructor-doclet": 0,
         "@highcharts/highcharts/no-wrap": 0, // @todo
         "@highcharts/highcharts/quote-members": 2,

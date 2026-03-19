@@ -309,12 +309,9 @@ class MockPoint {
      * */
 
     /**
-     * A flag indicating that a point is not the real one.
-     *
-     * @type {boolean}
-     * @default true
+     * A flag indicating that a point is not a real one.
      */
-    public mock: true = true;
+    public mock = true as const;
 
     /**
      * Apply options for the point.
