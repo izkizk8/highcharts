@@ -30,6 +30,7 @@ import type {
 } from '../../Options';
 import type { GridIconName } from '../../UI/SvgIcons';
 
+import { defaultLangOptions } from '../../Defaults.js';
 import {
     hasConfiguredGridRowPinningOptions,
     getGridRowPinningOptions
@@ -62,7 +63,9 @@ const builtInActionDefinitions: Record<
 > = {
     pinRowTop: {
         getLabel: (cell: TableCell): string =>
-            cell.row.viewport.grid.options?.lang?.pinRowTop || 'Pin row to top',
+            cell.row.viewport.grid.options?.lang?.pinRowTop ||
+            defaultLangOptions.pinRowTop ||
+            '',
         icon: 'pin',
         isDisabled: (cell, rowId): boolean =>
             isPinnedStateDisabled('pinRowTop', cell, rowId),
@@ -73,7 +76,8 @@ const builtInActionDefinitions: Record<
     pinRowBottom: {
         getLabel: (cell: TableCell): string =>
             cell.row.viewport.grid.options?.lang?.pinRowBottom ||
-            'Pin row to bottom',
+            defaultLangOptions.pinRowBottom ||
+            '',
         icon: 'pin',
         isDisabled: (cell, rowId): boolean =>
             isPinnedStateDisabled('pinRowBottom', cell, rowId),
@@ -83,7 +87,9 @@ const builtInActionDefinitions: Record<
     },
     unpinRow: {
         getLabel: (cell: TableCell): string =>
-            cell.row.viewport.grid.options?.lang?.unpinRow || 'Unpin row',
+            cell.row.viewport.grid.options?.lang?.unpinRow ||
+            defaultLangOptions.unpinRow ||
+            '',
         icon: 'unpin',
         isDisabled: (cell, rowId): boolean =>
             isPinnedStateDisabled('unpinRow', cell, rowId),
