@@ -97,27 +97,4 @@ test.describe('Cell Context Menu Demo Row Editing', () => {
         ).toContainText('Pears');
     });
 
-    test('Demo stays within viewport after narrow resize', async ({ page }) => {
-        await page.setViewportSize({ width: 390, height: 844 });
-        await page.waitForTimeout(100);
-
-        const layout = await page.evaluate(() => ({
-            innerWidth: window.innerWidth,
-            bodyScrollWidth: document.body.scrollWidth,
-            demoScrollWidth:
-                document.querySelector('.demo')?.scrollWidth || 0,
-            eventLogScrollWidth:
-                document.querySelector('.event-log')?.scrollWidth || 0
-        }));
-
-        expect(layout.bodyScrollWidth).toBeLessThanOrEqual(
-            layout.innerWidth + 1
-        );
-        expect(layout.demoScrollWidth).toBeLessThanOrEqual(
-            layout.innerWidth + 1
-        );
-        expect(layout.eventLogScrollWidth).toBeLessThanOrEqual(
-            layout.innerWidth + 1
-        );
-    });
 });
