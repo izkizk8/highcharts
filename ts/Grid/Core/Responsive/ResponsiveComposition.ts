@@ -68,7 +68,7 @@ export function compose(
  */
 function initResizeObserver(this: Grid): void {
     destroyResizeObserver.call(this);
-    if (!this.container) {
+    if (!this.contentWrapper) {
         return;
     }
 
@@ -105,7 +105,7 @@ function initResizeObserver(this: Grid): void {
         onResize.call(this, entries[0]);
     });
 
-    this.resizeObserver.observe(this.container);
+    this.resizeObserver.observe(this.contentWrapper);
 }
 
 /**
