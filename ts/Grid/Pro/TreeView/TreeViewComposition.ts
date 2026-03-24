@@ -28,6 +28,7 @@ import type { TreeViewOptions } from './TreeViewTypes';
 
 import Globals from '../../Core/Globals.js';
 import TreeProjectionController from './TreeProjectionController.js';
+import { createGridIcon } from '../../Core/UI/SvgIcons.js';
 import { addEvent, pushUnique } from '../../../Shared/Utilities.js';
 
 
@@ -193,14 +194,14 @@ function onAfterCellRender(this: TableCell): void {
     const cellElement = this.htmlElement;
     const wrapper = document.createElement('div');
     wrapper.className = Globals.classNamePrefix + 'tree-cell-wrapper';
+    wrapper.style.setProperty(
+        '--hcg-tree-depth',
+        String(rowState.depth)
+    );
 
     const toggleContainer = document.createElement('span');
     toggleContainer.className = (
         Globals.classNamePrefix + 'tree-toggle-container'
-    );
-    toggleContainer.style.setProperty(
-        '--hcg-tree-depth',
-        String(rowState.depth)
     );
 
     if (rowState.hasChildren) {
@@ -212,7 +213,6 @@ function onAfterCellRender(this: TableCell): void {
             Globals.classNamePrefix +
             'tree-toggle-button'
         );
-        toggleButton.textContent = rowState.isExpanded ? '▾' : '▸';
         toggleButton.setAttribute(
             'aria-label',
             rowState.isExpanded ? 'Collapse row' : 'Expand row'
@@ -222,6 +222,16 @@ function onAfterCellRender(this: TableCell): void {
             rowState.isExpanded ? 'true' : 'false'
         );
         toggleButton.setAttribute(treeToggleAttribute, '');
+
+        const toggleIcon = createGridIcon(
+            'chevronRight',
+            grid.options?.rendering?.icons
+        );
+        toggleIcon.classList.add(
+            Globals.classNamePrefix + 'tree-toggle-icon'
+        );
+        toggleIcon.setAttribute('aria-hidden', 'true');
+        toggleButton.appendChild(toggleIcon);
 
         toggleContainer.appendChild(toggleButton);
     }

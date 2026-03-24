@@ -3,29 +3,75 @@
 /* Grid Pro TreeView styles */
 
 .hcg-tree-cell-wrapper {
+    --hcg-tree-indent-size: 16px;
+    --hcg-tree-toggle-gap: 3px;
+    --hcg-tree-toggle-slot-size: 20px;
+    --hcg-tree-toggle-hit-area-size: 22px;
+    --hcg-tree-toggle-icon-size: 11px;
+    --hcg-tree-toggle-icon-stroke-width: 1.6;
+
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 4px;
+    min-width: 0;
+    padding-left:
+        calc(
+            (var(--hcg-tree-depth, 0) * var(--hcg-tree-indent-size)) +
+            var(--hcg-tree-toggle-slot-size) +
+            var(--hcg-tree-toggle-gap)
+        );
 }
 
 .hcg-tree-toggle-container {
-    --hcg-tree-indent-size: 16px;
-
-    display: inline-flex;
+    position: absolute;
+    top: 50%;
+    left: calc(var(--hcg-tree-depth, 0) * var(--hcg-tree-indent-size));
+    display: flex;
     align-items: center;
     justify-content: center;
-    margin-left: calc(var(--hcg-tree-depth, 0) * var(--hcg-tree-indent-size));
-    width: 16px;
-    height: 16px;
-    flex: 0 0 auto;
+    width: var(--hcg-tree-toggle-slot-size);
+    height: var(--hcg-tree-toggle-slot-size);
+    transform: translateY(calc(-50% + 1px));
 }
 
 .hcg-tree-toggle-button {
-    width: 16px;
-    height: 16px;
-    line-height: 14px;
+    --ig-button-padding: 0;
+    --ig-button-border-width: 0;
+    --ig-button-border-color: transparent;
+    --ig-button-background: transparent;
+    --ig-button-hover-background: color-mix(in srgb, currentcolor 12%, transparent);
+    --ig-button-hover-border-color: transparent;
+    --ig-button-selected-background: transparent;
+    --ig-button-selected-border-color: transparent;
+
+    width: var(--hcg-tree-toggle-hit-area-size);
+    height: var(--hcg-tree-toggle-hit-area-size);
+    min-height: var(--hcg-tree-toggle-hit-area-size);
+    min-width: var(--hcg-tree-toggle-hit-area-size);
     padding: 0;
-    min-width: 16px;
+    line-height: 1;
+    border-radius: 4px;
+    opacity: 0.72;
+}
+
+.hcg-tree-toggle-button:hover:not(:disabled),
+.hcg-tree-toggle-button:focus-visible {
+    opacity: 1;
+}
+
+.hcg-container .hcg-tree-toggle-button > svg.hcg-tree-toggle-icon {
+    width: var(--hcg-tree-toggle-icon-size);
+    height: var(--hcg-tree-toggle-icon-size);
+    transition: transform 120ms ease;
+    transform-origin: center;
+}
+
+.hcg-container .hcg-tree-toggle-button > svg.hcg-tree-toggle-icon path {
+    stroke-width: var(--hcg-tree-toggle-icon-stroke-width);
+}
+
+.hcg-tree-toggle-button[aria-expanded="true"] .hcg-tree-toggle-icon {
+    transform: rotate(90deg);
 }
 
 .hcg-tree-value-container {
