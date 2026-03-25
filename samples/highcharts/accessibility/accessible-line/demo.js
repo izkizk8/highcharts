@@ -29,8 +29,7 @@ Highcharts.chart('container', {
         },
         accessibility: {
             description: 'Percentage usage'
-        },
-        max: 100
+        }
     },
 
     xAxis: {
