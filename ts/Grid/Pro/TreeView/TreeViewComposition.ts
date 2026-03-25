@@ -26,6 +26,11 @@ import type { RowId } from '../../Core/Data/DataProvider';
 import type Table from '../../Core/Table/Table';
 import type TableCell from '../../Core/Table/Body/TableCell';
 import type { TreeViewOptions } from './TreeViewTypes';
+import type {
+    AfterTreeRowToggleEvent,
+    BeforeTreeRowToggleEvent,
+    TreeRowToggleTriggerEvent
+} from './TreeProjectionController';
 
 import Globals from '../../Core/Globals.js';
 import TreeProjectionController from './TreeProjectionController.js';
@@ -82,6 +87,8 @@ export function compose(
 
     addEvent(GridClass, 'beforeLoad', onBeforeLoad);
     addEvent(GridClass, 'beforeDestroy', onBeforeDestroy);
+    addEvent(GridClass, 'beforeTreeRowToggle', onBeforeTreeRowToggle);
+    addEvent(GridClass, 'afterTreeRowToggle', onAfterTreeRowToggle);
     addEvent(TableClass, 'beforeInit', onTableBeforeInit);
     addEvent(TableClass, 'afterDestroy', onTableAfterDestroy);
     addEvent(TableCellClass, 'afterRender', onAfterCellRender);
@@ -112,6 +119,32 @@ function onBeforeDestroy(this: Grid, e: { onlyDOM?: boolean }): void {
 
     this.treeView?.destroy();
     delete this.treeView;
+}
+
+/**
+ * Runs grid callback before a tree row toggle.
+ *
+ * @param e
+ * Tree row toggle event payload.
+ */
+function onBeforeTreeRowToggle(
+    this: Grid,
+    e: BeforeTreeRowToggleEvent
+): void {
+    this.options?.events?.beforeTreeRowToggle?.call(this, e);
+}
+
+/**
+ * Runs grid callback after a tree row toggle.
+ *
+ * @param e
+ * Tree row toggle event payload.
+ */
+function onAfterTreeRowToggle(
+    this: Grid,
+    e: AfterTreeRowToggleEvent
+): void {
+    this.options?.events?.afterTreeRowToggle?.call(this, e);
 }
 
 /**
@@ -205,11 +238,19 @@ function restoreTreeCellFocus(
  *
  * @param context
  * Tree-toggle context captured from the current DOM cell.
+ *
+ * @param originalEvent
+ * Browser event that initiated the toggle.
  */
 async function toggleTreeRow(
-    context: TreeToggleContext
+    context: TreeToggleContext,
+    originalEvent?: TreeRowToggleTriggerEvent
 ): Promise<void> {
-    const changed = await context.controller.toggleRow(context.rowId);
+    const changed = await context.controller.toggleRow(
+        context.rowId,
+        true,
+        originalEvent
+    );
 
     if (changed) {
         restoreTreeCellFocus(context);
@@ -238,7 +279,7 @@ function onTableBeforeInit(this: Table): void {
             return;
         }
 
-        void toggleTreeRow(context);
+        void toggleTreeRow(context, event);
     };
 
     const dblClickListener = (event: MouseEvent): void => {
@@ -259,7 +300,7 @@ function onTableBeforeInit(this: Table): void {
         event.stopImmediatePropagation();
         context.cell.htmlElement.focus();
 
-        void toggleTreeRow(context);
+        void toggleTreeRow(context, event);
     };
 
     const mouseDownListener = (event: MouseEvent): void => {
@@ -298,7 +339,7 @@ function onTableBeforeInit(this: Table): void {
         event.preventDefault();
         event.stopImmediatePropagation();
 
-        void toggleTreeRow(context);
+        void toggleTreeRow(context, event);
     };
 
     this.tbodyElement.addEventListener('click', clickListener);
@@ -437,6 +478,22 @@ function onAfterCellRender(this: TableCell): void {
 declare module '../../Core/Grid' {
     export default interface Grid {
         treeView?: TreeProjectionController;
+    }
+}
+
+declare module '../GridEvents' {
+    interface GridEvents {
+        /**
+         * Callback function to be called before a tree row is toggled.
+         *
+         * Call `event.preventDefault()` to cancel the toggle.
+         */
+        beforeTreeRowToggle?: (e: BeforeTreeRowToggleEvent) => void;
+
+        /**
+         * Callback function to be called after a tree row is toggled.
+         */
+        afterTreeRowToggle?: (e: AfterTreeRowToggleEvent) => void;
     }
 }
 

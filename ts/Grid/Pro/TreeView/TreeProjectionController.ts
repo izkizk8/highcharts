@@ -50,21 +50,7 @@ import {
 import {
     normalizeTreeViewOptions
 } from './TreeViewOptionsNormalizer.js';
-
-
-/* *
- *
- *  Declarations
- *
- * */
-
-interface DataOptionsWithTreeView extends LocalDataProviderOptions {
-    treeView?: TreeViewOptions;
-}
-
-interface TreeViewRowMetaFields {
-    expanded?: boolean;
-}
+import { fireEvent } from '../../../Shared/Utilities.js';
 
 
 /* *
@@ -210,12 +196,16 @@ class TreeProjectionController {
      * @param redraw
      * Whether to redraw rows after state change.
      *
+     * @param originalEvent
+     * Browser event that initiated the toggle.
+     *
      * @returns
      * Promise resolving to `true` when state changed, otherwise `false`.
      */
     public async toggleRow(
         rowId: RowId,
-        redraw: boolean = true
+        redraw: boolean = true,
+        originalEvent?: TreeRowToggleTriggerEvent
     ): Promise<boolean> {
         const options = this.options;
         const projectionState = this.projectionStateCache;
@@ -229,7 +219,20 @@ class TreeProjectionController {
             return false;
         }
 
-        const changed = this.setRowMetaExpanded(rowId, !rowState.isExpanded);
+        const newExpanded = !rowState.isExpanded;
+        const beforeEvent = {
+            expanded: newExpanded,
+            originalEvent,
+            rowId
+        } as BeforeTreeRowToggleEvent;
+
+        fireEvent(this.grid, 'beforeTreeRowToggle', beforeEvent);
+
+        if (beforeEvent.defaultPrevented) {
+            return false;
+        }
+
+        const changed = this.setRowMetaExpanded(rowId, newExpanded);
 
         if (!changed) {
             return false;
@@ -237,6 +240,12 @@ class TreeProjectionController {
 
         this.projectionStateCache = void 0;
         await this.requestRowsRedraw(redraw);
+
+        fireEvent(this.grid, 'afterTreeRowToggle', {
+            expanded: newExpanded,
+            originalEvent,
+            rowId
+        } as AfterTreeRowToggleEvent);
 
         return true;
     }
@@ -1045,6 +1054,64 @@ class TreeProjectionController {
  *  Declarations
  *
  * */
+
+interface DataOptionsWithTreeView extends LocalDataProviderOptions {
+    treeView?: TreeViewOptions;
+}
+
+interface TreeViewRowMetaFields {
+    expanded?: boolean;
+}
+
+/**
+ * Browser event that triggered a tree row toggle.
+ */
+export type TreeRowToggleTriggerEvent = KeyboardEvent | MouseEvent;
+
+/**
+ * Shared event payload for tree row toggle events.
+ */
+interface TreeRowToggleEvent {
+    /**
+     * Browser event that initiated the toggle, when available.
+     */
+    originalEvent?: TreeRowToggleTriggerEvent;
+
+    /**
+     * Row ID for the toggled tree row.
+     */
+    rowId: RowId;
+}
+
+/**
+ * Event payload fired before a tree row toggle.
+ */
+export interface BeforeTreeRowToggleEvent extends TreeRowToggleEvent {
+    /**
+     * Expanded state requested by the toggle.
+     */
+    expanded: boolean;
+
+    /**
+     * Whether the toggle was canceled.
+     */
+    defaultPrevented?: boolean;
+
+    /**
+     * Prevents the tree row toggle.
+     */
+    preventDefault: () => void;
+}
+
+/**
+ * Event payload fired after a tree row toggle.
+ */
+export interface AfterTreeRowToggleEvent extends TreeRowToggleEvent {
+    /**
+     * Expanded state after the toggle.
+     */
+    expanded: boolean;
+}
 
 declare module '../../Core/Grid' {
     interface RowMetaRecord extends TreeViewRowMetaFields {}
