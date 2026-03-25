@@ -107,8 +107,9 @@ export class LocalDataProvider extends DataProvider {
     private prePaginationRowCount?: number;
 
     /**
-     * Pre-computed snapshot of the presentation table rows, built once per
-     * query cycle for O(1) reads. See {@link MaterializedRows}.
+     * Pre-computed snapshot of row IDs and lookup indexes for the current
+     * presentation table. Row objects remain lazy to avoid rebuilding every
+     * row object on each query cycle.
      */
     private materializedRows: MaterializedRows = {
         rowIds: [],
@@ -193,7 +194,7 @@ export class LocalDataProvider extends DataProvider {
             this.dataTableEventDestructors.push(fn);
         }
 
-        this.originalRowIndexesMap = this.createOriginalRowIndexesMap(table);
+        this.originalRowIndexesMap = this.createOriginalRowIndexesMap();
     }
 
     private async handleTableChange(e: DataEvent): Promise<void> {
@@ -416,7 +417,19 @@ export class LocalDataProvider extends DataProvider {
     public override getRowObject(
         rowIndex: number
     ): Promise<RowObjectType | undefined> {
-        return Promise.resolve(this.materializedRows.rowObjects[rowIndex]);
+        const cachedRowObject = this.materializedRows.rowObjects[rowIndex];
+        if (cachedRowObject) {
+            return Promise.resolve(cachedRowObject);
+        }
+
+        const rowObject = this.presentationTable?.getRowObject(rowIndex);
+        if (!rowObject) {
+            return Promise.resolve(void 0);
+        }
+
+        this.materializedRows.rowObjects[rowIndex] = rowObject;
+
+        return Promise.resolve(rowObject);
     }
 
     /**
@@ -492,16 +505,15 @@ export class LocalDataProvider extends DataProvider {
         rowIndex: number
     ): Promise<DataTableCellType> {
         return Promise.resolve(
-            this.materializedRows.rowObjects[rowIndex]?.[columnId] as
-                DataTableCellType
+            this.presentationTable?.getCell(columnId, rowIndex)
         );
     }
 
     /**
      * Sets the value of a cell identified by row ID and column ID.
      *
-     * After updating the raw data table, the current query pipeline is
-     * reapplied so the presentation snapshot stays in sync.
+     * After updating the raw data table, refreshes the presentation snapshot
+     * immediately only when the normal querying flow will not do it.
      *
      * @param value
      * The new cell value.
@@ -527,8 +539,10 @@ export class LocalDataProvider extends DataProvider {
             fromGrid: true
         });
 
-        await this.applyQuery();
-        this.querying.shouldBeUpdated = false;
+        if (this.querying.willNotModify()) {
+            await this.applyQuery();
+            this.querying.shouldBeUpdated = false;
+        }
     }
 
     /**
@@ -556,9 +570,7 @@ export class LocalDataProvider extends DataProvider {
         }
 
         this.prePaginationRowCount = groupedTable.rowCount;
-        this.originalRowIndexesMap = this.createOriginalRowIndexesMap(
-            originalDataTable
-        );
+        this.originalRowIndexesMap = this.createOriginalRowIndexesMap();
 
         let activeTable = groupedTable;
 
@@ -582,16 +594,14 @@ export class LocalDataProvider extends DataProvider {
 
     private createMaterializedRows(table: DataTable): MaterializedRows {
         const rowIds: RowId[] = [];
-        const rowObjects: RowObjectType[] = [];
 
         for (let i = 0, iEnd = table.getRowCount(); i < iEnd; ++i) {
             rowIds.push(this.getRowIdFromTable(table, i));
-            rowObjects.push(table.getRowObject(i) || {});
         }
 
         return {
             rowIds,
-            rowObjects,
+            rowObjects: new Array<RowObjectType | undefined>(rowIds.length),
             rowIdToIndex: createRowIdIndexMap(rowIds)
         };
     }
@@ -604,11 +614,10 @@ export class LocalDataProvider extends DataProvider {
         return map;
     }
 
-    private createOriginalRowIndexesMap(
-        table: DataTable
-    ): Map<RowId, number> | undefined {
+    private createOriginalRowIndexesMap(): Map<RowId, number> | undefined {
         const idColId = this.getConfiguredIdColumn();
-        if (!idColId) {
+        const table = this.dataTable;
+        if (!idColId || !table) {
             return;
         }
 
@@ -654,11 +663,10 @@ export class LocalDataProvider extends DataProvider {
         table: DataTable,
         rowIndex: number
     ): RowId {
-        const row = table.getRowObject(rowIndex);
         const idColumn = this.getConfiguredIdColumn();
 
-        if (row && idColumn && table.hasColumns([idColumn])) {
-            const value = row[idColumn];
+        if (idColumn && table.hasColumns([idColumn])) {
+            const value = table.getCell(idColumn, rowIndex);
             if (isString(value) || isNumber(value)) {
                 return value;
             }
@@ -746,14 +754,13 @@ export class LocalDataProvider extends DataProvider {
 }
 
 /**
- * Pre-computed snapshot of the presentation table rows (after sort, filter,
- * and paginate). Built once per query cycle so that all subsequent reads
- * (`getRowId`, `getRowObject`, `getValue`, etc.) are O(1) array/Map lookups
- * instead of hitting DataTable methods on every call.
+ * Pre-computed snapshot of presentation row IDs plus a lazy row-object cache.
+ * ID and index lookups stay O(1), while row objects are materialized only
+ * when callers actually request them.
  */
 interface MaterializedRows {
     rowIds: RowId[];
-    rowObjects: RowObjectType[];
+    rowObjects: Array<RowObjectType | undefined>;
     rowIdToIndex: Map<RowId, number>;
 }
 
