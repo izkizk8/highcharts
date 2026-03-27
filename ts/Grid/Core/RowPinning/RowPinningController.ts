@@ -451,6 +451,17 @@ class RowPinningController {
         return this.pinnedRowObjects.get(rowId);
     }
 
+    public rememberMaterializedRow(
+        rowId: RowId | undefined,
+        row: RowObjectType
+    ): void {
+        if (rowId === void 0 || !this.isPinnedRowId(rowId)) {
+            return;
+        }
+
+        this.pinnedRowObjects.set(rowId, row);
+    }
+
     public ensurePinnedRowsAvailable(rowIds: RowId[]): Promise<{
         hydratedRowIds: RowId[];
         definitiveMissingRowIds: RowId[];
@@ -465,7 +476,6 @@ class RowPinningController {
             });
         }
 
-        const dataProvider = this.grid.dataProvider;
         const dataTable = this.grid.dataTable;
         const dataOptions = this.grid.options?.data as (
             { idColumn?: string } | undefined
@@ -483,7 +493,7 @@ class RowPinningController {
             }
 
             const row =
-                dataProvider?.getCachedRowObjectById(rowId) ||
+                this.getMaterializedRowObjectById(rowId) ||
                 this.getSourceRowObjectById(
                     rowId,
                     dataTable,
@@ -820,6 +830,22 @@ class RowPinningController {
                 this.pinnedRowObjects.delete(rowId);
             }
         }
+    }
+
+    private isPinnedRowId(
+        rowId: RowId,
+        state: RowPinningState = this.getPinnedRows()
+    ): boolean {
+        return (
+            state.topIds.includes(rowId) ||
+            state.bottomIds.includes(rowId)
+        );
+    }
+
+    private getMaterializedRowObjectById(
+        rowId: RowId
+    ): RowObjectType | undefined {
+        return this.grid.viewport?.getRow(rowId)?.data;
     }
 
     private getSourceRowObjectById(

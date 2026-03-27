@@ -68,6 +68,13 @@ export type ResolvedCellContextMenuItemOptions =
     CellContextMenuDividerItemOptions |
     ResolvedCellContextMenuActionItemOptions;
 
+type CellContextMenuBranchItemOptions = (
+    CellContextMenuActionItemOptions |
+    CellContextMenuBuiltInItemOptions
+) & {
+    items: CellContextMenuItemOptions[];
+};
+
 export interface BuiltInActionDefinition {
     getLabel: (cell: TableCell) => string;
     icon: GridIconName;
@@ -161,12 +168,7 @@ function isBuiltInOverride(
  */
 function hasNestedItems(
     item: CellContextMenuItemOptions
-): item is (
-    CellContextMenuActionItemOptions |
-    CellContextMenuBuiltInItemOptions
-) & {
-    items: CellContextMenuItemOptions[];
-} {
+): item is CellContextMenuBranchItemOptions {
     return (
         isObject(item, true) &&
         'items' in item &&

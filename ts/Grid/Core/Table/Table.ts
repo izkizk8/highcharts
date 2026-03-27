@@ -22,9 +22,9 @@
  *
  * */
 
-import TableRow from './Body/TableRow.js';
 import type DataTable from '../../../Data/DataTable';
 import type DataProvider from '../Data/DataProvider';
+import type TableCell from './Body/TableCell';
 import type { RowId } from '../Data/DataProvider';
 import type RowPinningView from '../RowPinning/RowPinningView';
 
@@ -32,12 +32,12 @@ import GridUtils from '../GridUtils.js';
 import ColumnResizing from './ColumnResizing/ColumnResizing.js';
 import ColumnResizingMode from './ColumnResizing/ResizingMode.js';
 import Column from './Column.js';
+import TableRow from './Body/TableRow.js';
 import TableHeader from './Header/TableHeader.js';
 import Grid from '../Grid.js';
 import RowsVirtualizer from './Actions/RowsVirtualizer.js';
 import ColumnsResizer from './Actions/ColumnsResizer.js';
 import Globals from '../Globals.js';
-import type TableCell from './Body/TableCell';
 
 import Cell from './Cell.js';
 import { defined, fireEvent, getStyle } from '../../../Shared/Utilities.js';

@@ -350,8 +350,9 @@ class RowsVirtualizer {
         tbody.scrollLeft = oldScrollLeft;
     }
 
-    private async syncPinnedRowsFromCurrentProvider(): Promise<void> {
-        await this.viewport.rowPinningView?.syncPinnedRowsFromCurrentProvider();
+    private async syncPinnedRowsFromMaterializedRows(): Promise<void> {
+        await this.viewport.rowPinningView
+            ?.syncPinnedRowsFromMaterializedRows();
     }
 
     /**
@@ -733,7 +734,7 @@ class RowsVirtualizer {
             }
 
             await vp.syncAriaRowIndexes();
-            await this.syncPinnedRowsFromCurrentProvider();
+            await this.syncPinnedRowsFromMaterializedRows();
         } finally {
             this.isRendering = false;
 

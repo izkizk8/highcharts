@@ -131,6 +131,7 @@ class TableRow extends Row {
         }
 
         this.data = data;
+        this.viewport.grid.rowPinning?.rememberMaterializedRow(this.id, data);
     }
 
     /**

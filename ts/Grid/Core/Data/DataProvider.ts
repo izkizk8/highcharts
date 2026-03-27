@@ -56,6 +56,7 @@ export abstract class DataProvider {
      */
     protected readonly options: DataProviderOptions;
 
+
     /* *
      *
      *  Constructor
@@ -147,22 +148,6 @@ export abstract class DataProvider {
     public abstract destroy(): void;
 
     /**
-     * Returns a row object by row ID from currently available provider data.
-     *
-     * Providers can override this to expose generic row lookup over their own
-     * resident cache without coupling to any specific Grid feature.
-     *
-     * @param rowId
-     * Row identifier.
-     */
-    public getCachedRowObjectById(
-        rowId: RowId
-    ): RowObjectType | undefined {
-        void rowId;
-        return void 0;
-    }
-
-    /**
      * Returns the number of items before pagination has been applied.
      */
     public async getPrePaginationRowCount(): Promise<number> {
@@ -234,6 +219,7 @@ export interface DataProviderOptions {
      */
     providerType?: string;
 }
+
 
 /* *
  *

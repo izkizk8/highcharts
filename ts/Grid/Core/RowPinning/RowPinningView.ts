@@ -10,6 +10,7 @@
  *
  *  Author:
  *  - Mikkel Espolin Birkeland
+ *  - Dawid Dragula
  *
  * */
 
@@ -400,7 +401,7 @@ class RowPinningView {
         }
     }
 
-    public async syncPinnedRowsFromCurrentProvider(): Promise<void> {
+    public async syncPinnedRowsFromMaterializedRows(): Promise<void> {
         const { grid } = this.viewport;
 
         if (!grid.rowPinning?.isEnabled()) {
@@ -412,6 +413,9 @@ class RowPinningView {
             ...pinnedRows.topIds,
             ...pinnedRows.bottomIds
         ];
+        const hasPendingRenderedRows = this.hasPendingRenderedPinnedRows(
+            pinnedRows
+        );
 
         if (!pinnedIds.length) {
             return;
@@ -426,7 +430,11 @@ class RowPinningView {
             grid.rowPinning.pruneMissingExplicitIds(definitiveMissingRowIds);
         }
 
-        if (hydratedRowIds.length || definitiveMissingRowIds.length) {
+        if (
+            hasPendingRenderedRows ||
+            hydratedRowIds.length ||
+            definitiveMissingRowIds.length
+        ) {
             await this.render(true);
         }
     }
@@ -658,6 +666,29 @@ class RowPinningView {
                 tableElement.appendChild(section.tbody);
             }
         }
+    }
+
+    private hasPendingRenderedPinnedRows(
+        pinnedRows: { topIds: RowId[]; bottomIds: RowId[] }
+    ): boolean {
+        const { rowPinning } = this.viewport.grid;
+
+        if (!rowPinning) {
+            return false;
+        }
+
+        for (const section of this.getPinnedSections(pinnedRows)) {
+            for (const rowId of section.rowIds) {
+                if (
+                    rowPinning.getPinnedRowObject(rowId) &&
+                    !section.rowById.has(rowId)
+                ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private clearPinnedRows(): void {

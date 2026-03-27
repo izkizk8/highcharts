@@ -481,22 +481,6 @@ export class RemoteDataProvider extends DataProvider {
         return this.getRowObjectFromCache(rowIndex);
     }
 
-    public override getCachedRowObjectById(
-        rowId: RowId
-    ): RowObjectType | undefined {
-        const info = this.rowIdToChunkInfo?.get(rowId);
-
-        if (!info) {
-            return void 0;
-        }
-
-        const rowIndex = this.querying.pagination.enabled ?
-            info.localIndex :
-            info.chunkIndex * this.maxChunkSize + info.localIndex;
-
-        return this.getRowObjectFromCache(rowIndex);
-    }
-
     public override async getPrePaginationRowCount(): Promise<number> {
         if (this.prePaginationRowCount !== null) {
             return this.prePaginationRowCount;
