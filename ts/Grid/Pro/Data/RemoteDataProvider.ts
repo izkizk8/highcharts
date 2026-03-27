@@ -27,10 +27,7 @@ import type {
     Column as DataTableColumnType,
     CellType as DataTableCellType
 } from '../../../Data/DataTable';
-import type {
-    DataProviderOptions,
-    RowId
-} from '../../Core/Data/DataProvider';
+import type { DataProviderOptions, RowId } from '../../Core/Data/DataProvider';
 import type { ColumnDataType } from '../../Core/Table/Column';
 import type QueryingController from '../../Core/Querying/QueryingController';
 import type { DataSourceOptions } from './DataSourceHelper';
