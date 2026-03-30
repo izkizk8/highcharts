@@ -883,6 +883,10 @@ class Tooltip {
             swap();
         }
         run();
+        if (outside) {
+            ret.x -= chartPosition.left;
+            ret.y -= chartPosition.top;
+        }
         return ret;
 
     }
@@ -1953,13 +1957,10 @@ class Tooltip {
         // Set the renderer size dynamically to prevent document size to change.
         // Renderer only exists when tooltip is outside.
         if (renderer && container) {
-            // Corrects positions, occurs with tooltip positioner (#16944)
-            if (positioner || fixed) {
-                const { scrollLeft = 0, scrollTop = 0 } = chart
-                    .scrollablePlotArea?.scrollingContainer || {};
-                pos.x += scrollLeft + left - distance;
-                pos.y += scrollTop + top - distance;
-            }
+            const { scrollLeft = 0, scrollTop = 0 } = chart
+                .scrollablePlotArea?.scrollingContainer || {};
+            pos.x += scrollLeft + left;
+            pos.y += scrollTop + top;
 
             // Pad it by the border width and distance. Add 2 to make room for
             // the default shadow (#19314).
