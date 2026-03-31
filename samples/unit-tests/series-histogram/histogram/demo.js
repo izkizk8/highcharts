@@ -14,7 +14,7 @@ QUnit.test('Histogram', function (assert) {
 
     assert.ok(
         chart.series[0],
-        'Histogram should initialize with object data without baseseries.'
+        'Histogram should work with object data without baseseries (#24073).'
     );
 
     chart = Highcharts.chart('container', {
