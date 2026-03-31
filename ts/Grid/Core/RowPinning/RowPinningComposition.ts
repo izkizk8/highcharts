@@ -139,6 +139,8 @@ function registerBuiltInActions(): void {
             getLabel: (cell): string =>
                 cell.row.viewport.grid.options?.lang?.pinRowTop || '',
             icon: 'pin',
+            isVisible: (cell, rowId): boolean =>
+                isRowPinningActionVisible(cell, rowId),
             isDisabled: (cell, rowId): boolean =>
                 isRowPinningActionDisabled('pinRowTop', cell, rowId),
             onClick: (cell, rowId): void => {
@@ -154,6 +156,8 @@ function registerBuiltInActions(): void {
             getLabel: (cell): string =>
                 cell.row.viewport.grid.options?.lang?.pinRowBottom || '',
             icon: 'pin',
+            isVisible: (cell, rowId): boolean =>
+                isRowPinningActionVisible(cell, rowId),
             isDisabled: (cell, rowId): boolean =>
                 isRowPinningActionDisabled('pinRowBottom', cell, rowId),
             onClick: (cell, rowId): void => {
@@ -169,6 +173,8 @@ function registerBuiltInActions(): void {
             getLabel: (cell): string =>
                 cell.row.viewport.grid.options?.lang?.unpinRow || '',
             icon: 'unpin',
+            isVisible: (cell, rowId): boolean =>
+                isRowPinningActionVisible(cell, rowId),
             isDisabled: (cell, rowId): boolean =>
                 isRowPinningActionDisabled('unpinRow', cell, rowId),
             onClick: (cell, rowId): void => {
@@ -247,6 +253,43 @@ function onBeforeGridUpdate(
     ) {
         this.rowPinning.invalidatePinnedRowObjects();
     }
+}
+
+/**
+ * Returns whether a row pinning built-in action should be visible.
+ *
+ * @param cell
+ * Context menu cell context.
+ *
+ * @param cell.row
+ * Row context.
+ *
+ * @param cell.row.viewport
+ * Viewport context.
+ *
+ * @param cell.row.viewport.grid
+ * Owning grid instance.
+ *
+ * @param rowId
+ * Current row identifier.
+ */
+function isRowPinningActionVisible(
+    cell: {
+        row: {
+            viewport: {
+                grid: Grid;
+            };
+        };
+    },
+    rowId: GridRowId | undefined
+): boolean {
+    const { grid } = cell.row.viewport;
+
+    return (
+        rowId !== void 0 &&
+        hasConfiguredGridRowPinningOptions(grid) &&
+        grid.rowPinning?.isOptionEnabled() === true
+    );
 }
 
 /**

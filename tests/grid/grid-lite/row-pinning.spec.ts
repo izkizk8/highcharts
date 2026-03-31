@@ -381,9 +381,16 @@ test.describe('Grid Pro row pinning', () => {
         expect(state.rowCount).toBeGreaterThanOrEqual(state.maxRowIndex);
     });
 
-    test('Disabling pinning ignores config and runtime pinning API', async ({ page }) => {
+    test('Disabling pinning UI preserves config and runtime pinning API', async ({ page }) => {
         const state = await page.evaluate(async () => {
             const grid = (window as any).grid;
+            const getPinnedIds = (section: 'top'|'bottom'): string[] => Array.from(
+                (
+                    section === 'top' ?
+                        grid.viewport.pinnedTopTbodyElement :
+                        grid.viewport.pinnedBottomTbodyElement
+                ).querySelectorAll('td[data-column-id="id"]')
+            ).map((el: Element) => (el.textContent || '').trim());
 
             await grid.update({
                 rendering: {
@@ -392,7 +399,9 @@ test.describe('Grid Pro row pinning', () => {
                             enabled: false,
                             topIds: ['ROW-001', 'ROW-002'],
                             bottomIds: ['ROW-060'],
-                            resolve: () => 'top'
+                            resolve: (row: Record<string, unknown>) => (
+                                row.id === 'ROW-003' ? 'top' : null
+                            )
                         }
                     }
                 }
@@ -404,10 +413,12 @@ test.describe('Grid Pro row pinning', () => {
                     grid.viewport.pinnedTopTbodyElement.parentElement ===
                     grid.viewport.tableElement
                 ),
+                topRenderedIds: getPinnedIds('top'),
                 bottomConnected: (
                     grid.viewport.pinnedBottomTbodyElement.parentElement ===
                     grid.viewport.tableElement
-                )
+                ),
+                bottomRenderedIds: getPinnedIds('bottom')
             };
 
             await grid.rowPinning.pin('ROW-005', 'top');
@@ -422,23 +433,51 @@ test.describe('Grid Pro row pinning', () => {
                         grid.viewport.pinnedTopTbodyElement.parentElement ===
                         grid.viewport.tableElement
                     ),
+                    topRenderedIds: getPinnedIds('top'),
                     bottomConnected: (
                         grid.viewport.pinnedBottomTbodyElement.parentElement ===
                         grid.viewport.tableElement
-                    )
+                    ),
+                    bottomRenderedIds: getPinnedIds('bottom')
                 }
             };
         });
 
-        expect(state.afterDisable.pinned.topIds).toEqual([]);
-        expect(state.afterDisable.pinned.bottomIds).toEqual([]);
-        expect(state.afterDisable.topConnected).toBe(false);
-        expect(state.afterDisable.bottomConnected).toBe(false);
+        expect(state.afterDisable.pinned.topIds).toEqual([
+            'ROW-001',
+            'ROW-002',
+            'ROW-003'
+        ]);
+        expect(state.afterDisable.pinned.bottomIds).toEqual(['ROW-060']);
+        expect(state.afterDisable.topConnected).toBe(true);
+        expect(state.afterDisable.bottomConnected).toBe(true);
+        expect(state.afterDisable.topRenderedIds).toEqual([
+            'ROW-001',
+            'ROW-002',
+            'ROW-003'
+        ]);
+        expect(state.afterDisable.bottomRenderedIds).toEqual(['ROW-060']);
 
-        expect(state.afterRuntimeCalls.pinned.topIds).toEqual([]);
-        expect(state.afterRuntimeCalls.pinned.bottomIds).toEqual([]);
-        expect(state.afterRuntimeCalls.topConnected).toBe(false);
-        expect(state.afterRuntimeCalls.bottomConnected).toBe(false);
+        expect(state.afterRuntimeCalls.pinned.topIds).toEqual([
+            'ROW-002',
+            'ROW-005',
+            'ROW-003'
+        ]);
+        expect(state.afterRuntimeCalls.pinned.bottomIds).toEqual([
+            'ROW-060',
+            'ROW-006'
+        ]);
+        expect(state.afterRuntimeCalls.topConnected).toBe(true);
+        expect(state.afterRuntimeCalls.bottomConnected).toBe(true);
+        expect(state.afterRuntimeCalls.topRenderedIds).toEqual([
+            'ROW-002',
+            'ROW-005',
+            'ROW-003'
+        ]);
+        expect(state.afterRuntimeCalls.bottomRenderedIds).toEqual([
+            'ROW-060',
+            'ROW-006'
+        ]);
     });
 
     test('Pinned section is stable across sort and filter', async ({ page }) => {
@@ -777,7 +816,7 @@ test.describe('Grid Pro row pinning', () => {
         ]);
     });
 
-    test('resolve pinning remains disabled after explicit unpin', async ({ page }) => {
+    test('resolve pinning remains disabled after explicit unpin when pinning UI is disabled', async ({ page }) => {
         const state = await page.evaluate(async () => {
             const grid = (window as any).grid;
             const getPinnedTopIds = (): string[] => Array.from(
@@ -790,6 +829,7 @@ test.describe('Grid Pro row pinning', () => {
                 rendering: {
                     rows: {
                         pinning: {
+                            enabled: false,
                             topIds: [],
                             bottomIds: [],
                             resolve: (row: Record<string, unknown>) => (

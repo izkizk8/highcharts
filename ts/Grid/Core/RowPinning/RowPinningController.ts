@@ -232,11 +232,6 @@ class RowPinningController {
         const top = pinningOptions?.topIds || [];
         const bottom = pinningOptions?.bottomIds || [];
 
-        if (!this.isOptionEnabled()) {
-            this.clearState(true);
-            return;
-        }
-
         const normalized = RowPinningController.normalizeSections(top, bottom);
 
         this.topRowIds = normalized.topIds;
@@ -252,10 +247,6 @@ class RowPinningController {
 
     public isEnabled(): boolean {
         this.loadOptions();
-
-        if (!this.isOptionEnabled()) {
-            return false;
-        }
 
         const explicit = this.getExplicitPinnedRows();
         const pinningOptions = this.getPinningOptions();
@@ -278,10 +269,6 @@ class RowPinningController {
         position: RowPinningPosition = 'top',
         index?: number
     ): Promise<void> {
-        if (!this.isOptionEnabled()) {
-            return;
-        }
-
         const previous = this.getPinnedRows();
         const eventPayload = this.createChangeEvent(
             previous,
@@ -306,10 +293,6 @@ class RowPinningController {
         rowId: RowId,
         position: RowPinningPosition = 'top'
     ): Promise<void> {
-        if (!this.isOptionEnabled()) {
-            return;
-        }
-
         const previous = this.getPinnedRows();
         const isPinned = (
             previous.topIds.includes(rowId) ||
@@ -339,10 +322,6 @@ class RowPinningController {
     }
 
     public async unpin(rowId: RowId): Promise<void> {
-        if (!this.isOptionEnabled()) {
-            return;
-        }
-
         const previous = this.getPinnedRows();
         const eventPayload = this.createChangeEvent(
             previous,
@@ -414,13 +393,6 @@ class RowPinningController {
 
     public getPinnedRows(): RowPinningState {
         this.loadOptions();
-
-        if (!this.isOptionEnabled()) {
-            return {
-                topIds: [],
-                bottomIds: []
-            };
-        }
 
         const normalized = RowPinningController.normalizeSections(
             [
@@ -543,10 +515,6 @@ class RowPinningController {
     }
 
     public async recomputeResolvedFromMaterializedRows(): Promise<void> {
-        if (!this.isOptionEnabled()) {
-            return;
-        }
-
         const resolve = this.getPinningOptions()?.resolve;
         const dataProvider = this.grid.dataProvider;
         if (!dataProvider) {
@@ -632,18 +600,6 @@ class RowPinningController {
             (hydratedRowIds.length || definitiveMissingRowIds.length)
         ) {
             await this.grid.viewport.renderPinnedRows(true);
-        }
-    }
-
-    private clearState(clearExplicitUnpinned: boolean = false): void {
-        this.topRowIds.length = 0;
-        this.bottomRowIds.length = 0;
-        this.resolvedTopRowIds.length = 0;
-        this.resolvedBottomRowIds.length = 0;
-        this.pinnedRowObjects.clear();
-
-        if (clearExplicitUnpinned) {
-            this.explicitUnpinned.clear();
         }
     }
 

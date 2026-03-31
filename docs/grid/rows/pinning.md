@@ -34,7 +34,8 @@ Grid.grid('container', {
 });
 ```
 
-Row pinning is enabled by default. Use `pinning.enabled: false` to disable it:
+Row pinning is enabled by default. Use `pinning.enabled: false` to disable row
+pinning UI:
 
 ```js
 Grid.grid('container', {
@@ -48,9 +49,35 @@ Grid.grid('container', {
 });
 ```
 
-When disabled, Grid ignores row pinning config (`topIds`, `bottomIds`,
-`resolve`, etc.), runtime pinning methods are no-op, and pinned row sections
-are not rendered.
+When disabled, Grid still applies row pinning config (`topIds`, `bottomIds`,
+`resolve`, etc.) and the runtime row pinning API continues to work. The
+setting only disables built-in row pinning affordances such as context menu
+actions.
+
+```js
+const grid = Grid.grid('container', {
+    data: {
+        dataTable: {
+            columns: {
+                id: ['row-001', 'row-002', 'row-003'],
+                priority: ['critical', 'normal', 'done']
+            }
+        },
+        idColumn: 'id'
+    },
+    rendering: {
+        rows: {
+            pinning: {
+                enabled: false,
+                topIds: ['row-001'],
+                resolve: (row) => row.priority === 'done' ? 'bottom' : null
+            }
+        }
+    }
+});
+
+await grid.rowPinning.pin('row-002', 'top');
+```
 
 Use `data.idColumn` to define stable row identity for persistence and restore.
 If it is not set, Grid uses a default row id.

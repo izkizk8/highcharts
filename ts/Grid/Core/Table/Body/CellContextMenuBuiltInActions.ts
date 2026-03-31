@@ -78,6 +78,10 @@ type CellContextMenuBranchItemOptions = (
 export interface BuiltInActionDefinition {
     getLabel: (cell: TableCell) => string;
     icon: GridIconName;
+    isVisible?: (
+        cell: TableCell,
+        rowId: string|number|undefined
+    ) => boolean;
     isDisabled: (
         cell: TableCell,
         rowId: string|number|undefined
@@ -262,6 +266,10 @@ function resolveBuiltInAction(
     }
 
     const rowId = getCurrentRowId(cell);
+    if (definition.isVisible && !definition.isVisible(cell, rowId)) {
+        return;
+    }
+
     const disabled = isBranch ?
         !!override?.disabled :
         definition.isDisabled(cell, rowId) || !!override?.disabled;

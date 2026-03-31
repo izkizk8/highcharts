@@ -238,7 +238,7 @@ test.describe('Grid Pro row pinning events', () => {
         expect(result[5].pinnedAtCallTime.bottomIds).toEqual(['C']);
     });
 
-    test('does not fire events when pinning is disabled', async ({ page }) => {
+    test('fires events when pinning UI is disabled', async ({ page }) => {
         await page.goto('/grid-pro/basic/overview', {
             waitUntil: 'networkidle'
         });
@@ -279,6 +279,7 @@ test.describe('Grid Pro row pinning events', () => {
                 }
             });
 
+            const initialPinned = grid.rowPinning.getPinnedRows();
             await grid.rowPinning.pin('B', 'top');
             await grid.rowPinning.toggle('C');
             await grid.rowPinning.unpin('A');
@@ -289,13 +290,23 @@ test.describe('Grid Pro row pinning events', () => {
             container.remove();
 
             return {
+                initialPinned,
                 output,
                 pinned
             };
         });
 
-        expect(state.output).toEqual([]);
-        expect(state.pinned.topIds).toEqual([]);
+        expect(state.initialPinned.topIds).toEqual(['A']);
+        expect(state.initialPinned.bottomIds).toEqual(['C']);
+        expect(state.output).toEqual([
+            'before',
+            'after',
+            'before',
+            'after',
+            'before',
+            'after'
+        ]);
+        expect(state.pinned.topIds).toEqual(['B']);
         expect(state.pinned.bottomIds).toEqual([]);
     });
 });

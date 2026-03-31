@@ -375,7 +375,7 @@ test.describe('Cell Context Menu', () => {
             await expect(page.locator('.hcg-popup')).toHaveCount(0);
         });
 
-        test('built-ins are disabled when row pinning is disabled', async ({ page }) => {
+        test('built-ins are hidden when row pinning UI is disabled', async ({ page }) => {
             await page.evaluate(() => {
                 const existing = document.getElementById(
                     'cm-builtins-disabled'
@@ -416,14 +416,118 @@ test.describe('Cell Context Menu', () => {
             );
             await cell.click({ button: 'right' });
 
-            const menuButtons = page.locator('.hcg-popup .hcg-menu-item');
-            await expect(menuButtons).toHaveCount(3);
+            await expect(page.locator('.hcg-popup')).toHaveCount(0);
+        });
 
-            const disabledCount = await page.locator(
-                '.hcg-popup .hcg-menu-item[disabled]'
-            ).count();
+        test('explicit built-ins are hidden when row pinning UI is disabled', async ({ page }) => {
+            await page.evaluate(() => {
+                const existing = document.getElementById(
+                    'cm-builtins-explicit-disabled'
+                );
+                existing?.remove();
 
-            expect(disabledCount).toBe(3);
+                const container = document.createElement('div');
+                container.id = 'cm-builtins-explicit-disabled';
+                document.body.appendChild(container);
+
+                (window as any).Grid.grid(container, {
+                    dataTable: {
+                        columns: {
+                            id: ['ROW-001'],
+                            value: [1]
+                        }
+                    },
+                    rendering: {
+                        rows: {
+                            pinning: {
+                                enabled: false,
+                                idColumn: 'id'
+                            }
+                        }
+                    },
+                    columnDefaults: {
+                        cells: {
+                            contextMenu: {
+                                enabled: true,
+                                items: [
+                                    'pinRowTop',
+                                    'pinRowBottom',
+                                    'unpinRow'
+                                ]
+                            }
+                        }
+                    }
+                });
+            });
+
+            const cell = page.locator(
+                '#cm-builtins-explicit-disabled tbody tr[data-row-index="0"] td[data-column-id="id"]'
+            );
+            await cell.click({ button: 'right' });
+
+            await expect(page.locator('.hcg-popup')).toHaveCount(0);
+        });
+
+        test('custom context menu items remain when row pinning built-ins are hidden', async ({ page }) => {
+            await page.evaluate(() => {
+                const existing = document.getElementById(
+                    'cm-builtins-custom-disabled'
+                );
+                existing?.remove();
+
+                const container = document.createElement('div');
+                container.id = 'cm-builtins-custom-disabled';
+                document.body.appendChild(container);
+
+                (window as any).Grid.grid(container, {
+                    dataTable: {
+                        columns: {
+                            id: ['ROW-001'],
+                            value: [1]
+                        }
+                    },
+                    rendering: {
+                        rows: {
+                            pinning: {
+                                enabled: false,
+                                idColumn: 'id'
+                            }
+                        }
+                    },
+                    columnDefaults: {
+                        cells: {
+                            contextMenu: {
+                                enabled: true,
+                                items: [
+                                    'pinRowTop',
+                                    {
+                                        label: 'Custom action',
+                                        icon: 'menu'
+                                    },
+                                    {
+                                        actionId: 'unpinRow'
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                });
+            });
+
+            const cell = page.locator(
+                '#cm-builtins-custom-disabled tbody tr[data-row-index="0"] td[data-column-id="id"]'
+            );
+            await cell.click({ button: 'right' });
+
+            const popup = page.locator('.hcg-popup').last();
+            await expect(popup).toBeVisible();
+
+            const menuButtons = popup.locator('.hcg-menu-item');
+            await expect(menuButtons).toHaveCount(1);
+            await expect(menuButtons).toContainText('Custom action');
+            await expect(popup).not.toContainText('Pin row to top');
+            await expect(popup).not.toContainText('Pin row to bottom');
+            await expect(popup).not.toContainText('Unpin row');
         });
 
         test('ArrowRight opens submenu and focuses first child', async ({ page }) => {
