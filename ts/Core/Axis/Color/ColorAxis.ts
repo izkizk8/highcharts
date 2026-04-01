@@ -299,7 +299,13 @@ class ColorAxis extends Axis implements ColorAxisBase {
             horiz = layout !== 'vertical';
 
         const sideSpecific = horiz ? { title: { rotation: 0 } } :
-            { title: { rotation: 270, align: 'middle', margin: 10 } };
+            {
+                title: {
+                    rotation: 270,
+                    align: 'middle',
+                    margin: 10
+                }
+            };
 
         const options = merge(
             sideSpecific,
@@ -447,7 +453,29 @@ class ColorAxis extends Axis implements ColorAxisBase {
                 axis.axisParent = legendItem.group;
                 axis.createGroups();
             }
+            // --- THE SVG TRANSFORM FIX ---
+            // Provide mock dimensions so getTitlePosition returns valid numbers
+            // on Pass 1. This ensures the rotation transform succeeds, allowing
+            // getBBox() to read the true ROTATED dimensions!
+            const tempLen = axis.len,
+                tempTop = axis.top,
+                tempLeft = axis.left,
+                tempWidth = axis.width;
+
+            axis.len = horiz ? width : height;
+            axis.top = 0;
+            axis.left = 0;
+            axis.width = width;
+
             axis.addTitle(true);
+
+            // Restore the original undefined values
+            // (setAxisSize will overwrite them later)
+            axis.len = tempLen;
+            axis.top = tempTop;
+            axis.left = tempLeft;
+            axis.width = tempWidth;
+            // -----------------------------
         }
 
         if (axis.axisTitle) {
@@ -509,6 +537,9 @@ class ColorAxis extends Axis implements ColorAxisBase {
         if (this.horiz && axisTitle) {
             const titleMargin = this.options.title?.margin ?? 0;
             pos.y = this.top - titleMargin;
+        } else if (!this.horiz && axisTitle) {
+            const titleBBox = axisTitle.getBBox();
+            pos.y = this.top + (this.len || 0) / 2 - (titleBBox.height / 2);
         }
 
         return pos;
