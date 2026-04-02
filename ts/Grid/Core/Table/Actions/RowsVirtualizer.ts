@@ -698,14 +698,24 @@ class RowsVirtualizer {
             }
 
             // Focus the cell if the focus cursor is set
-            if (vp.focusCursor) {
-                const [rowIndex, columnIndex] = vp.focusCursor;
+            const hadPendingFocusCursor = !!vp.pendingFocusCursor;
+            const targetFocusCursor = (
+                vp.pendingFocusCursor ||
+                vp.focusCursor
+            );
+            if (targetFocusCursor) {
+                const [rowIndex, columnIndex] = targetFocusCursor;
                 const row = rows.find((row): boolean => row.index === rowIndex);
 
                 if (row) {
                     row.cells[columnIndex]?.htmlElement.focus({
                         preventScroll: true
                     });
+                    delete vp.pendingFocusCursor;
+
+                    if (hadPendingFocusCursor) {
+                        vp.ensureRowFullyVisible(row);
+                    }
                 }
             }
 

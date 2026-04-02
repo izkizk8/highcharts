@@ -299,6 +299,7 @@ class TableCell extends Cell {
 
         const vp = this.row.viewport;
 
+        delete vp.pendingFocusCursor;
         vp.focusCursor = [
             this.row.index,
             this.column.index

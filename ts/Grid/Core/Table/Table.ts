@@ -144,6 +144,12 @@ class Table {
     public focusCursor?: [number, number];
 
     /**
+     * Pending focus target used while virtualization scrolls a body row into
+     * the render window.
+     */
+    public pendingFocusCursor?: [number, number];
+
+    /**
      * The only cell that is to be focusable using tab key - a table focus
      * entry point.
      */
@@ -632,9 +638,15 @@ class Table {
      * Try it: {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/grid-lite/basic/scroll-to-row | Scroll to row}
      */
     public scrollToRow(index: number): void {
+        const stickyRowsHeight = this.getStickyRowsHeight();
+
         if (this.virtualRows) {
             this.tbodyElement.scrollTop =
-                index * this.rowsVirtualizer.defaultRowHeight;
+                Math.max(
+                    0,
+                    index * this.rowsVirtualizer.defaultRowHeight -
+                    stickyRowsHeight
+                );
             return;
         }
 
@@ -652,9 +664,12 @@ class Table {
             );
         const firstRowTop = rows[0].getBoundingClientRect().top;
 
-        this.tbodyElement.scrollTop = (
-            rows[index].getBoundingClientRect().top
-        ) - firstRowTop;
+        this.tbodyElement.scrollTop = Math.max(
+            0,
+            (
+                rows[index].getBoundingClientRect().top
+            ) - firstRowTop - stickyRowsHeight
+        );
     }
 
     /**
@@ -674,11 +689,7 @@ class Table {
 
         const tbodyRect = this.tbodyElement.getBoundingClientRect();
         const rowRect = row.htmlElement.getBoundingClientRect();
-        const stickyRowsHeight = (this.treeStickyRows || []).reduce(
-            (height, stickyRow): number =>
-                height + stickyRow.htmlElement.offsetHeight,
-            0
-        );
+        const stickyRowsHeight = this.getStickyRowsHeight();
         const visibleTop = tbodyRect.top + stickyRowsHeight;
         const visibleBottom = tbodyRect.bottom;
         const visibleHeight = Math.max(visibleBottom - visibleTop, 0);
@@ -702,6 +713,88 @@ class Table {
             0,
             Math.min(nextScrollTop, maxScrollTop)
         );
+    }
+
+    /**
+     * Returns the current height occupied by sticky tree rows.
+     */
+    public getStickyRowsHeight(): number {
+        return (this.treeStickyRows || []).reduce(
+            (height, stickyRow): number =>
+                height + stickyRow.htmlElement.offsetHeight,
+            0
+        );
+    }
+
+    /**
+     * Returns the rows that should participate in keyboard navigation. Sticky
+     * tree clones are treated as the visible representatives of their rows and
+     * replace matching rows from the main body.
+     */
+    public getKeyboardNavigableRows(): TableRow[] {
+        const stickyRows = this.treeStickyRows || [];
+
+        if (!stickyRows.length) {
+            return this.rows;
+        }
+
+        const stickyRowIds = new Set<RowId>();
+        for (let i = 0, iEnd = stickyRows.length; i < iEnd; ++i) {
+            const rowId = stickyRows[i].id;
+
+            if (typeof rowId !== 'undefined') {
+                stickyRowIds.add(rowId);
+            }
+        }
+
+        return stickyRows.concat(
+            this.rows.filter((row): boolean => (
+                typeof row.id === 'undefined' ||
+                !stickyRowIds.has(row.id)
+            ))
+        );
+    }
+
+    /**
+     * Focuses a body cell by its row index in the projected table order. When
+     * a sticky tree clone represents that row, it is preferred over the main
+     * body row.
+     *
+     * @param rowIndex
+     * The target row index.
+     *
+     * @param columnIndex
+     * The target column index.
+     */
+    public focusCellByRowIndex(rowIndex: number, columnIndex: number): void {
+        if (
+            columnIndex < 0 ||
+            columnIndex >= this.columns.length ||
+            rowIndex < 0 ||
+            rowIndex >= this.rowsVirtualizer.rowCount
+        ) {
+            return;
+        }
+
+        const targetRow = this.getKeyboardNavigableRows().find(
+            (row): boolean => row.index === rowIndex
+        );
+        const targetCell = targetRow?.cells[columnIndex];
+
+        if (targetCell) {
+            delete this.pendingFocusCursor;
+            targetCell.htmlElement.focus({
+                preventScroll: true
+            });
+
+            if (targetRow?.htmlElement.parentElement === this.tbodyElement) {
+                this.ensureRowFullyVisible(targetRow);
+            }
+            return;
+        }
+
+        this.pendingFocusCursor = [rowIndex, columnIndex];
+        this.scrollToRow(rowIndex);
     }
 
     /**

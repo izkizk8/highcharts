@@ -201,19 +201,6 @@ abstract class Cell {
         const vp = row.viewport;
         const { header } = vp;
 
-        const getVerticalPos = (): number => {
-            if ((row as TableRow).index !== void 0) {
-                return (row as TableRow).index - vp.rows[0].index;
-            }
-
-            const level = (row as unknown as HeaderRow).level;
-            if (!header || level === void 0) {
-                return 0;
-            }
-
-            return Math.max(level, header.levels) - header.rows.length - 1;
-        };
-
         const changeFocusKeys: Record<typeof e.key, [number, number]> = {
             ArrowDown: [1, 0],
             ArrowUp: [-1, 0],
@@ -231,17 +218,40 @@ abstract class Cell {
             e.preventDefault();
             e.stopPropagation();
 
-            const { header } = vp;
-            const localRowIndex = getVerticalPos();
+            const nextColumnIndex = column.index + dir[1];
+
+            if ((row as TableRow).index !== void 0) {
+                const nextRowIndex = (row as TableRow).index + dir[0];
+
+                if (nextRowIndex < 0 && header) {
+                    const extraRowIdx = header.rows.length + nextRowIndex;
+                    if (extraRowIdx + 1 > header.levels) {
+                        header.rows[extraRowIdx]
+                            .cells[nextColumnIndex]?.htmlElement.focus();
+                    } else {
+                        vp.columns[nextColumnIndex]
+                            ?.header?.htmlElement.focus();
+                    }
+                    return;
+                }
+
+                vp.focusCellByRowIndex(nextRowIndex, nextColumnIndex);
+                return;
+            }
+
+            const level = (row as unknown as HeaderRow).level;
+            const localRowIndex = (!header || level === void 0) ?
+                0 :
+                Math.max(level, header.levels) - header.rows.length - 1;
             const nextVerticalDir = localRowIndex + dir[0];
 
             if (nextVerticalDir < 0 && header) {
                 const extraRowIdx = header.rows.length + nextVerticalDir;
                 if (extraRowIdx + 1 > header.levels) {
                     header.rows[extraRowIdx]
-                        .cells[column.index + dir[1]]?.htmlElement.focus();
+                        .cells[nextColumnIndex]?.htmlElement.focus();
                 } else {
-                    vp.columns[column.index + dir[1]]
+                    vp.columns[nextColumnIndex]
                         ?.header?.htmlElement.focus();
                 }
                 return;
@@ -249,7 +259,7 @@ abstract class Cell {
 
             const nextRow = vp.rows[nextVerticalDir];
             if (nextRow) {
-                const nextCell = nextRow.cells[column.index + dir[1]];
+                const nextCell = nextRow.cells[nextColumnIndex];
                 nextCell?.htmlElement.focus({
                     preventScroll: true
                 });

@@ -416,23 +416,32 @@ function onTableBeforeInit(this: Table): void {
     };
 
     const keyDownListener = (event: KeyboardEvent): void => {
+        const cell = this.getCellFromElement(event.target);
+
         if (
-            event.key !== 'Enter' &&
-            event.key !== ' ' &&
-            event.key !== 'Spacebar'
+            (
+                event.key === 'Enter' ||
+                event.key === ' ' ||
+                event.key === 'Spacebar'
+            ) &&
+            cell
         ) {
-            return;
+            const context = getTreeToggleContextFromKeyboardEvent(this, event);
+            if (context) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                void toggleTreeRow(context, event);
+                return;
+            }
         }
 
-        const context = getTreeToggleContextFromKeyboardEvent(this, event);
-        if (!context) {
-            return;
+        if (
+            cell &&
+            event.currentTarget === stickyBody
+        ) {
+            (cell as { onKeyDown(e: KeyboardEvent): void }).onKeyDown(event);
         }
-
-        event.preventDefault();
-        event.stopImmediatePropagation();
-
-        void toggleTreeRow(context, event);
     };
 
     const wheelListener = (event: WheelEvent): void => {
