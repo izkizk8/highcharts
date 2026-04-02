@@ -523,6 +523,10 @@ async function renderChart() {
         const barChart = barSeries.chart,
             mapChart = allMapSeries[0].chart;
 
+        mapChart.series.forEach(series => {
+            series.setState('');
+        });
+
         // Reset the styles for all bar and map points
         barSeries.points.forEach(point => {
             point.update({
@@ -563,6 +567,10 @@ async function renderChart() {
             Eurozone: {
                 center: [10, 55],
                 zoom: 3.5
+            },
+            'Europe - Emerging': {
+                center: [100, 60],
+                zoom: 2.5
             }
         };
 
@@ -584,7 +592,10 @@ async function renderChart() {
                         // tooltip
                         allMapSeries.forEach(series => {
                             if (series.name === point.name) {
-                                const bounds = series.bounds;
+                                const bounds = series.bounds,
+                                    mapPoint =
+                                        series.points.find(p => p.graphic) ||
+                                        series.points[0];
 
                                 series.update({
                                     color: '#2f2e38'
@@ -600,11 +611,9 @@ async function renderChart() {
                                     mapChart.mapView.fitToBounds(bounds);
                                 }
 
-                                mapChart.tooltip.refresh(
-                                    series.points.find(p => p.graphic) ||
-                                    series.points[0]
-                                );
-
+                                mapChart.tooltip.refresh(mapPoint);
+                                mapChart.pointer.applyInactiveState([mapPoint]);
+                                mapPoint.setState('hover');
                                 renderChartInTooltip(point);
                             }
                         });
