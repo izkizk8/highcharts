@@ -745,10 +745,6 @@ QUnit.test(
             TestUtilities.lolexRunAndUninstall(clock);
         } finally {
             TestUtilities.lolexUninstall(clock);
-
-            // Clear cache for other tests
-            delete alTopology.objects.default['hc-decoded-geojson'];
-            delete usTopology.objects.default['hc-decoded-geojson'];
         }
     }
 );

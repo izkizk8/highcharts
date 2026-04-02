@@ -45,7 +45,7 @@ import type SVGRenderer from '../../Core/Renderer/SVG/SVGRenderer';
 import type Tick from '../../Core/Axis/Tick';
 
 import A from '../../Core/Animation/AnimationUtilities.js';
-const { animObject } = A;
+const { animObject, stop } = A;
 import Breadcrumbs from '../Breadcrumbs/Breadcrumbs.js';
 import H from '../../Core/Globals.js';
 const { noop } = H;
@@ -55,7 +55,6 @@ import {
     diffObjects,
     defined,
     extend,
-    pick,
     merge,
     objectEach,
     syncTimeout,
@@ -533,7 +532,7 @@ class ChartAdditions {
             colorProp: SeriesOptions = chart.styledMode ?
                 { colorIndex: point.colorIndex ?? oldSeries.colorIndex } :
                 { color: point.color || oldSeries.color },
-            levelNumber = oldSeries.options._levelNumber || 0;
+            levelNumber = oldSeries.options._levelNumber ?? 0;
 
         if (!chart.drilldownLevels) {
             chart.drilldownLevels = [];
@@ -557,15 +556,11 @@ class ChartAdditions {
         // Record options for all current series
         oldSeries.chart.series.forEach((series): void => {
             if (series.xAxis === xAxis) {
-                series.options._ddSeriesId =
-                    series.options._ddSeriesId || ddSeriesId++;
+                series.options._ddSeriesId ||= ddSeriesId++;
                 series.options.colorIndex = series.colorIndex;
-                series.options._levelNumber =
-                    series.options._levelNumber || levelNumber; // #3182
-                series.userOptions._levelNumber = (
-                    series.userOptions._levelNumber ||
-                    series.options._levelNumber
-                );
+                series.options._levelNumber ??= levelNumber; // #3182
+                series.userOptions._levelNumber ??=
+                    series.options._levelNumber;
 
                 if (last) {
                     levelSeries = last.levelSeries;
@@ -672,10 +667,9 @@ class ChartAdditions {
 
                 if (level.levelNumber === levelToRemove) {
                     level.levelSeries.forEach((series): void => {
-                        const levelNumber = pick(
-                            series.options._levelNumber,
-                            series.userOptions._levelNumber
-                        );
+                        const levelNumber =
+                            series.options._levelNumber ??
+                            series.userOptions._levelNumber;
                         // Not removed, not added as part of a multi-series
                         // drilldown
                         if (!chart.mapView) {
@@ -701,6 +695,24 @@ class ChartAdditions {
                             }
                             const drillAnimOptions =
                                 animObject(animOptions);
+                            const hideDataLabels = (): void => {
+                                const hideGroup = (
+                                    group?: SVGElement
+                                ): void => {
+                                    const element = group?.element;
+                                    if (group && element) {
+                                        stop(group);
+                                        element.setAttribute('opacity', '0');
+                                        element.setAttribute(
+                                            'visibility',
+                                            'hidden'
+                                        );
+                                    }
+                                };
+
+                                hideGroup(series.dataLabelsGroup);
+                                series.dataLabelsGroups?.forEach(hideGroup);
+                            };
 
                             let seriesRemoved = false;
                             const removeSeries = (): void => {
@@ -710,6 +722,19 @@ class ChartAdditions {
                                 seriesRemoved = true;
 
                                 if (series.chart) {
+                                    if (series.group) {
+                                        stop(series.group);
+                                    }
+                                    if (series.dataLabelsGroup) {
+                                        stop(series.dataLabelsGroup);
+                                    }
+                                    series.dataLabelsGroups?.forEach(
+                                        (group): void => {
+                                            if (group) {
+                                                stop(group);
+                                            }
+                                        }
+                                    );
                                     series.remove(false);
                                 }
                                 // If it is the last series
@@ -744,7 +769,11 @@ class ChartAdditions {
                                 }
                             };
 
-                            if (series.group) {
+                            if (series.group?.element) {
+                                // Hide labels immediately to avoid stale
+                                // labels flashing during map transform.
+                                hideDataLabels();
+
                                 series.group.animate(
                                     {
                                         opacity: 0
@@ -896,8 +925,8 @@ class ChartAdditions {
                         if (
                             chartSeries[seriesI].options.id ===
                                 level.lowerSeriesOptions.id &&
-                            pick(
-                                chartSeries[seriesI].options._levelNumber,
+                            (
+                                chartSeries[seriesI].options._levelNumber ??
                                 chartSeries[seriesI].userOptions._levelNumber
                             ) ===
                                 levelNumber + 1
