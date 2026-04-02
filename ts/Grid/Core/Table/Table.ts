@@ -658,6 +658,53 @@ class Table {
     }
 
     /**
+     * Ensures that a row is fully visible inside the scrollable body, taking
+     * the sticky tree rows overlay into account.
+     *
+     * @param row
+     * The row to reveal.
+     */
+    public ensureRowFullyVisible(row: TableRow): void {
+        if (
+            !row.htmlElement.isConnected ||
+            row.htmlElement.parentElement !== this.tbodyElement
+        ) {
+            return;
+        }
+
+        const tbodyRect = this.tbodyElement.getBoundingClientRect();
+        const rowRect = row.htmlElement.getBoundingClientRect();
+        const stickyRowsHeight = (this.treeStickyRows || []).reduce(
+            (height, stickyRow): number =>
+                height + stickyRow.htmlElement.offsetHeight,
+            0
+        );
+        const visibleTop = tbodyRect.top + stickyRowsHeight;
+        const visibleBottom = tbodyRect.bottom;
+        const visibleHeight = Math.max(visibleBottom - visibleTop, 0);
+        const maxScrollTop = Math.max(
+            this.tbodyElement.scrollHeight - this.tbodyElement.clientHeight,
+            0
+        );
+        let nextScrollTop = this.tbodyElement.scrollTop;
+
+        if (rowRect.top < visibleTop) {
+            nextScrollTop -= visibleTop - rowRect.top;
+        } else if (rowRect.bottom > visibleBottom) {
+            if (rowRect.height >= visibleHeight) {
+                nextScrollTop += rowRect.top - visibleTop;
+            } else {
+                nextScrollTop += rowRect.bottom - visibleBottom;
+            }
+        }
+
+        this.tbodyElement.scrollTop = Math.max(
+            0,
+            Math.min(nextScrollTop, maxScrollTop)
+        );
+    }
+
+    /**
      * Get the widthRatio value from the width in pixels. The widthRatio is
      * calculated based on the width of the viewport.
      *

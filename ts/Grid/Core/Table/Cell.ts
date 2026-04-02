@@ -249,7 +249,11 @@ abstract class Cell {
 
             const nextRow = vp.rows[nextVerticalDir];
             if (nextRow) {
-                nextRow.cells[column.index + dir[1]]?.htmlElement.focus();
+                const nextCell = nextRow.cells[column.index + dir[1]];
+                nextCell?.htmlElement.focus({
+                    preventScroll: true
+                });
+                vp.ensureRowFullyVisible(nextRow);
             }
         }
     }
