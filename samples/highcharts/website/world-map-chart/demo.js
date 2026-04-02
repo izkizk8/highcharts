@@ -8,7 +8,7 @@ const commonOptions = {
     }
 };
 
-const imgPath = 'https://cdn.jsdelivr.net/gh/highcharts/highcharts@cb31d4cfc2/samples/graphics/world-map-icons/{filename}';
+const imgPath = 'https://cdn.jsdelivr.net/gh/highcharts/highcharts@fcab8defe5/samples/graphics/world-map-icons/{filename}';
 
 function parseData(regionalExposureData) {
     // Mapping region code to relevant country ISO code and development status
@@ -606,7 +606,11 @@ async function renderChart() {
                                     mapChart.mapView.fitToBounds(bounds);
                                 }
 
-                                mapChart.tooltip.refresh(series.points[0]);
+                                mapChart.tooltip.refresh(
+                                    series.points.find(p => p.graphic) ||
+                                    series.points[0]
+                                );
+
                                 renderChartInTooltip(point);
                             }
                         });
@@ -671,7 +675,10 @@ async function renderChart() {
 
                         // Render the tooltip first to create a div for the
                         // 'renderChartInTooltip' method
-                        this.chart.tooltip.refresh(this.points[0]);
+                        this.chart.tooltip.refresh(
+                            this.points.find(p => p.graphic) ||
+                            this.points[0]
+                        );
 
                         highlightBarPoint(point);
                         renderChartInTooltip(point);
