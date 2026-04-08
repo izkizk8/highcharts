@@ -19,8 +19,7 @@ Highcharts.chart('container', {
 
     subtitle: {
         text:
-      'Source: WebAIM. Click on points to visit official screen ' +
-      'reader website (opens in a new tab)'
+      'Source: WebAIM. Click on points to visit official screen reader website'
     },
 
     yAxis: {
@@ -61,11 +60,7 @@ Highcharts.chart('container', {
             point: {
                 events: {
                     click: function () {
-                        window.open(
-                            this.series.options.website,
-                            '_blank',
-                            'noopener,noreferrer'
-                        );
+                        top.location.href = this.series.options.website;
                     }
                 }
             },
