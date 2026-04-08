@@ -970,6 +970,110 @@ test.describe('Grid Pro row pinning', () => {
         expect(state.bottomTransform).toContain('-120px');
     });
 
+    test('keeps the acted-on visible row anchored through top pin and unpin', async ({ page }) => {
+        const state = await page.evaluate(async () => {
+            const grid = (window as any).grid;
+            const waitForLayout = async (): Promise<void> => {
+                await new Promise<void>((resolve) => {
+                    requestAnimationFrame(() => resolve());
+                });
+                await new Promise<void>((resolve) => {
+                    requestAnimationFrame(() => resolve());
+                });
+            };
+            const getScrollableRowTop = (rowId: string): number | undefined => {
+                const row = grid.viewport.tbodyElement.querySelector(
+                    `tr[data-row-id="${rowId}"]`
+                ) as HTMLElement | null;
+
+                return row?.getBoundingClientRect().top;
+            };
+
+            grid.viewport.scrollToRow(20);
+            grid.viewport.tbodyElement.dispatchEvent(new Event('scroll'));
+            await waitForLayout();
+
+            const before = getScrollableRowTop('ROW-021');
+
+            await grid.rowPinning.pin('ROW-021', 'top');
+            await waitForLayout();
+            const afterPin = getScrollableRowTop('ROW-021');
+
+            await grid.rowPinning.unpin('ROW-021');
+            await waitForLayout();
+            const afterUnpin = getScrollableRowTop('ROW-021');
+
+            return {
+                before,
+                afterPin,
+                afterUnpin
+            };
+        });
+
+        expect(state.before).toBeDefined();
+        expect(state.afterPin).toBeDefined();
+        expect(state.afterUnpin).toBeDefined();
+        expect(Math.abs((state.afterPin || 0) - (state.before || 0)))
+            .toBeLessThanOrEqual(2);
+        expect(Math.abs((state.afterUnpin || 0) - (state.before || 0)))
+            .toBeLessThanOrEqual(2);
+    });
+
+    test('compensates viewport when an offscreen top pin would shrink the main body', async ({ page }) => {
+        const state = await page.evaluate(async () => {
+            const grid = (window as any).grid;
+            const waitForLayout = async (): Promise<void> => {
+                await new Promise<void>((resolve) => {
+                    requestAnimationFrame(() => resolve());
+                });
+                await new Promise<void>((resolve) => {
+                    requestAnimationFrame(() => resolve());
+                });
+            };
+            const getScrollableRowTop = (rowId: string): number | undefined => {
+                const row = grid.viewport.tbodyElement.querySelector(
+                    `tr[data-row-id="${rowId}"]`
+                ) as HTMLElement | null;
+
+                return row?.getBoundingClientRect().top;
+            };
+
+            await grid.update({
+                rendering: {
+                    rows: {
+                        pinning: {
+                            topIds: ['ROW-001']
+                        }
+                    }
+                }
+            });
+
+            grid.viewport.scrollToRow(24);
+            grid.viewport.tbodyElement.dispatchEvent(new Event('scroll'));
+            await waitForLayout();
+
+            const anchorRowId = 'ROW-025';
+            const before = getScrollableRowTop(anchorRowId);
+            const scrollTopBefore = grid.viewport.tbodyElement.scrollTop;
+
+            await grid.rowPinning.pin('ROW-002', 'top', 0);
+            await waitForLayout();
+
+            return {
+                before,
+                after: getScrollableRowTop(anchorRowId),
+                scrollTopBefore,
+                scrollTopAfter: grid.viewport.tbodyElement.scrollTop
+            };
+        });
+
+        expect(state.before).toBeDefined();
+        expect(state.after).toBeDefined();
+        expect(state.scrollTopAfter).toBeGreaterThan(state.scrollTopBefore);
+        expect(Math.abs((state.after || 0) - (state.before || 0)))
+            .toBeLessThanOrEqual(2);
+    });
+
     test('Pinned rows work with explicit virtualization true', async ({ page }) => {
         const state = await page.evaluate(async () => {
             const grid = (window as any).grid;

@@ -54,6 +54,12 @@ interface PinnedSectionDescriptor {
     rowById: Map<RowId, TableRow>;
 }
 
+export interface PinningViewportCompensationState {
+    anchorRowId?: RowId;
+    anchorRowTop?: number;
+    pinnedTopHeight: number;
+}
+
 class RowPinningView {
 
     public readonly viewport: Table;
@@ -277,6 +283,79 @@ class RowPinningView {
         if (rowBottom > viewportBottom) {
             tbody.scrollTop = Math.max(0, rowBottom - tbody.clientHeight);
         }
+    }
+
+    public captureViewportCompensation(
+        rowId: RowId
+    ): PinningViewportCompensationState {
+        const compensationState: PinningViewportCompensationState = {
+            pinnedTopHeight: this.pinnedTopTbodyElement.isConnected ?
+                this.pinnedTopTbodyElement.offsetHeight :
+                0
+        };
+        const anchorRow = this.viewport.rows.find((row): boolean =>
+            row.id === rowId
+        );
+
+        if (!anchorRow?.htmlElement.isConnected) {
+            return compensationState;
+        }
+
+        const tbodyRect = this.viewport.tbodyElement.getBoundingClientRect();
+        const rowRect = anchorRow.htmlElement.getBoundingClientRect();
+
+        if (
+            rowRect.bottom <= tbodyRect.top ||
+            rowRect.top >= tbodyRect.bottom
+        ) {
+            return compensationState;
+        }
+
+        compensationState.anchorRowId = rowId;
+        compensationState.anchorRowTop = rowRect.top;
+
+        return compensationState;
+    }
+
+    public restoreViewportCompensation(
+        compensationState: PinningViewportCompensationState
+    ): void {
+        let delta: number | undefined;
+
+        if (
+            compensationState.anchorRowId !== void 0 &&
+            compensationState.anchorRowTop !== void 0
+        ) {
+            const anchorRow = this.viewport.rows.find((row): boolean =>
+                row.id === compensationState.anchorRowId
+            );
+            const anchorElement = anchorRow?.htmlElement;
+
+            if (anchorElement?.isConnected) {
+                delta = (
+                    anchorElement.getBoundingClientRect().top -
+                    compensationState.anchorRowTop
+                );
+            }
+        }
+
+        if (delta === void 0) {
+            delta = (
+                (this.pinnedTopTbodyElement.isConnected ?
+                    this.pinnedTopTbodyElement.offsetHeight :
+                    0) -
+                compensationState.pinnedTopHeight
+            );
+        }
+
+        if (!delta) {
+            return;
+        }
+
+        this.viewport.tbodyElement.scrollTop = Math.max(
+            0,
+            this.viewport.tbodyElement.scrollTop + delta
+        );
     }
 
     public syncHorizontalScroll(scrollLeft: number): void {

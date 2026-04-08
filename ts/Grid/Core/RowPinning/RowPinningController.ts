@@ -681,6 +681,11 @@ class RowPinningController {
         announcementPosition?: RowPinningPosition
     ): Promise<void> {
         const { grid } = this;
+        const compensationState = eventPayload.changed ?
+            grid.viewport?.rowPinningView?.captureViewportCompensation(
+                eventPayload.rowId
+            ) :
+            void 0;
 
         fireEvent(grid, 'beforeRowPin', eventPayload);
         this.callEventCallback('beforeRowPin', eventPayload);
@@ -697,6 +702,11 @@ class RowPinningController {
 
         await this.handlePinnedRenderResult(renderResult, 'runtime');
         grid.viewport?.reflow();
+        if (compensationState) {
+            grid.viewport?.rowPinningView?.restoreViewportCompensation(
+                compensationState
+            );
+        }
 
         if (
             announcementAction === 'pin' &&
