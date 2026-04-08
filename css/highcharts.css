@@ -1125,7 +1125,7 @@ input.highcharts-range-selector {
 
 .highcharts-separator {
     border: none;
-    background-color: var(--highcharts-neutral-color-80, #cccccc);
+    background-color: var(--highcharts-neutral-color-40);
     height: 0.5px;
     margin: 10px 0;
     padding: 0;

@@ -1207,7 +1207,7 @@ export class Exporting {
                         if (!chart.styledMode) {
                             css(element, {
                                 border: 'none',
-                                backgroundColor: '#cccccc',
+                                backgroundColor: '#999999',
                                 height: '0.5px',
                                 margin: '10px 0',
                                 padding: 0,
