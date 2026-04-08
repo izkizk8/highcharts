@@ -1125,10 +1125,11 @@ input.highcharts-range-selector {
 
 .highcharts-separator {
     border: none;
-    background-color: var(--highcharts-neutral-color-80);
+    background-color: var(--highcharts-neutral-color-80, #cccccc);
     height: 0.5px;
     margin: 10px 0;
     padding: 0;
+    list-style-type: none;
     pointer-events: none;
 }
 

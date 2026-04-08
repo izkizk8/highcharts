@@ -1197,7 +1197,7 @@ export class Exporting {
                             'li',
                             {
                                 className:
-                                'highcharts-separator',
+                                'highcharts-menu-item highcharts-separator',
                                 role: 'separator'
                             },
                             void 0,
@@ -1207,11 +1207,11 @@ export class Exporting {
                         if (!chart.styledMode) {
                             css(element, {
                                 border: 'none',
-                                backgroundColor:
-                                'var(--highcharts-neutral-color-80)',
+                                backgroundColor: '#cccccc',
                                 height: '0.5px',
                                 margin: '10px 0',
                                 padding: 0,
+                                listStyle: 'none',
                                 'pointer-events': 'none'
                             });
                         }
