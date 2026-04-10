@@ -428,16 +428,127 @@ export class Exporting {
     }
 
     /** @internal */
+    /**
+     * Extract an array of font family names from a `font-family` string.
+     * Handles trimming and removal of surrounding quotes.
+     *
+     * @param {string|undefined} fontFamily
+     * The font-family CSS value to extract font names from.
+     *
+     * @return {string[]}
+     * Array of font family names.
+     */
+    private static extractFontFamilies(fontFamily?: string): string[] {
+        if (!fontFamily) {
+            return [];
+        }
+
+        return fontFamily
+            .split(',')
+            .map((font): string => font.trim().replace(/^['"]|['"]$/g, ''))
+            .filter(Boolean);
+    }
+
+    /**
+     * Checks if a given CSS selector affects the SVG element or any of
+     * its descendants. Returns true if either the SVG element itself
+     * matches the selector, or if any element within the SVG matches it.
+     *
+     * @internal
+     *
+     * @param {string} selector
+     * The CSS selector to test against the SVG element and its descendants.
+     * @param {SVGSVGElement} svg
+     * The SVG element to check for matches with the selector.
+     *
+     * @return {boolean}
+     * True if the selector matches the SVG or any of its descendants,
+     * false otherwise.
+     */
+
+    private static selectorAffectsSVG(
+        selector: string,
+        svg: SVGSVGElement
+    ): boolean {
+        try {
+            if (svg.matches(selector)) {
+                return true;
+            }
+            return !!svg.querySelector(selector);
+        } catch {
+            // Ignore invalid/unsupported selectors for matching.
+            return false;
+        }
+    }
+
+    /** @internal */
+    /**
+     * Collects all unique font family names used inline
+     * within <text> and <tspan> elements of an SVG by inspecting
+     * their style attributes and font-family attributes.
+     *
+     * @param {SVGSVGElement} svg
+     * The SVG element in which to search for inline font families.
+     * @param {Set<string>} usedFontFamilies
+     * The set to store and accumulate unique font family names.
+     */
+    private static collectSVGInlineFonts(
+        svg: SVGSVGElement,
+        usedFontFamilies: Set<string>
+    ): void {
+        const textNodes = svg.querySelectorAll('text, tspan');
+
+        for (const textNode of Array.from(textNodes)) {
+            const styleAttr = textNode.getAttribute('style') || '';
+            const inlineFontFamily = textNode.getAttribute('font-family') || '';
+
+            if (styleAttr.indexOf('font-family') > -1) {
+                const match = styleAttr.match(/font-family\s*:\s*([^;]+)/i);
+                const families = Exporting.extractFontFamilies(match?.[1]);
+                for (const family of families) {
+                    usedFontFamilies.add(family);
+                }
+            }
+
+            for (
+                const family of Exporting.extractFontFamilies(inlineFontFamily)
+            ) {
+                usedFontFamilies.add(family);
+            }
+        }
+    }
+
+    /** @internal */
     private static async handleStyleSheet(
         sheet: CSSStyleSheet,
-        resultArray: string[]
+        fontFaceRules: string[],
+        usedFontFamilies: Set<string>,
+        svg: SVGSVGElement
     ): Promise<void> {
         try {
             for (const rule of Array.from(sheet.cssRules)) {
                 if (rule instanceof CSSImportRule) {
                     const sheet = await Exporting.fetchCSS(rule.href);
                     if (sheet) {
-                        await Exporting.handleStyleSheet(sheet, resultArray);
+                        await Exporting.handleStyleSheet(
+                            sheet,
+                            fontFaceRules,
+                            usedFontFamilies,
+                            svg
+                        );
+                    }
+                }
+
+                if (
+                    rule instanceof CSSStyleRule &&
+                    Exporting.selectorAffectsSVG(rule.selectorText, svg)
+                ) {
+                    for (
+                        const family of Exporting.extractFontFamilies(
+                            rule.style.fontFamily
+                        )
+                    ) {
+                        usedFontFamilies.add(family);
                     }
                 }
 
@@ -459,33 +570,57 @@ export class Exporting {
                             });
                     }
 
-                    resultArray.push(cssText);
+                    fontFaceRules.push(cssText);
                 }
             }
         } catch {
             if (sheet.href) {
                 const newSheet = await Exporting.fetchCSS(sheet.href);
                 if (newSheet) {
-                    await Exporting.handleStyleSheet(newSheet, resultArray);
+                    await Exporting.handleStyleSheet(
+                        newSheet,
+                        fontFaceRules,
+                        usedFontFamilies,
+                        svg
+                    );
                 }
             }
         }
     }
 
     /** @internal */
-    private static async fetchStyleSheets(): Promise<string[]> {
-        const cssTexts: string[] = [];
+    private static async fetchStyleSheets(svg: SVGSVGElement): Promise<string[]> {
+        const fontFaceRules: string[] = [],
+            usedFontFamilies = new Set<string>();
+
+        Exporting.collectSVGInlineFonts(svg, usedFontFamilies);
 
         for (const sheet of Array.from(doc.styleSheets)) {
-            await Exporting.handleStyleSheet(sheet, cssTexts);
+            await Exporting.handleStyleSheet(
+                sheet,
+                fontFaceRules,
+                usedFontFamilies,
+                svg
+            );
         }
 
-        return cssTexts;
+        if (!usedFontFamilies.size) {
+            return fontFaceRules;
+        }
+
+        return fontFaceRules.filter((cssText): boolean => {
+            const familyMatch = cssText.match(/font-family\s*:\s*([^;]+);?/i),
+                families = Exporting.extractFontFamilies(familyMatch?.[1]);
+
+            return families.some(
+                (family): boolean => usedFontFamilies.has(family)
+            );
+        });
     }
 
     /** @internal */
     public static async inlineFonts(svg: SVGSVGElement): Promise<SVGSVGElement> {
-        const cssTexts = await Exporting.fetchStyleSheets(),
+        const cssTexts = await Exporting.fetchStyleSheets(svg),
             urlRegex = /url\(([^)]+)\)/g,
             urls: string[] = [];
 
