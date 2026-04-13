@@ -159,17 +159,6 @@ class TreeStickyRowController {
     }
 
     /**
-     * Returns the first rendered sticky row.
-     */
-    public getRenderedStickyRow(): TableRow | undefined {
-        if (!this.enabled) {
-            return;
-        }
-
-        return this.stickyRows[0];
-    }
-
-    /**
      * Returns the rendered sticky row instances.
      */
     public getRenderedStickyRows(): TableRow[] {
@@ -381,15 +370,6 @@ class TreeStickyRowController {
 
         stickyBodyElement = document.createElement('tbody');
         stickyBodyElement.className = stickyBodyClassName;
-        stickyBodyElement.style.position = 'absolute';
-        stickyBodyElement.style.left = '0';
-        stickyBodyElement.style.height = '0';
-        stickyBodyElement.style.minHeight = '0';
-        stickyBodyElement.style.overflow = 'hidden';
-        stickyBodyElement.style.display = 'block';
-        stickyBodyElement.style.flex = 'none';
-        stickyBodyElement.style.pointerEvents = 'none';
-        stickyBodyElement.style.zIndex = '3';
         this.viewport.tableElement.insertBefore(
             stickyBodyElement,
             this.viewport.tbodyElement
