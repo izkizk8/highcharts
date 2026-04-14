@@ -949,6 +949,18 @@ class RowsVirtualizer {
      * The row to pool.
      */
     private poolRow(row: TableRow): void {
+        const focusCursor = this.viewport.focusCursor;
+        const activeElement = document.activeElement;
+
+        if (
+            focusCursor &&
+            focusCursor[0] === row.index &&
+            activeElement instanceof Element &&
+            row.htmlElement.contains(activeElement)
+        ) {
+            this.viewport.preserveFocusDuringDetach();
+        }
+
         row.htmlElement.remove();
         if (this.rowPool.length < RowsVirtualizer.MAX_POOL_SIZE) {
             this.rowPool.push(row);

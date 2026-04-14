@@ -146,6 +146,12 @@ class Table {
     public focusAnchorCell?: Cell;
 
     /**
+     * Whether the current logical focus belongs to a body cell that has been
+     * detached from the DOM by virtualization.
+     */
+    private hasDetachedFocus = false;
+
+    /**
      * The flag that indicates if the table rows are virtualized.
      */
     public virtualRows: boolean = true;
@@ -194,6 +200,12 @@ class Table {
 
         this.tbodyElement.addEventListener('scroll', this.onScroll);
         this.tbodyElement.addEventListener('focus', this.onTBodyFocus);
+        document.addEventListener('focusin', this.onDocumentFocusIn, true);
+        document.addEventListener(
+            'pointerdown',
+            this.onDocumentPointerDown,
+            true
+        );
 
         // Delegated cell events
         this.tbodyElement.addEventListener('click', this.onCellClick);
@@ -458,6 +470,55 @@ class Table {
         }
 
         this.header?.scrollHorizontally(this.tbodyElement.scrollLeft);
+    };
+
+    /**
+     * Handles document focus changes while a logically focused cell is
+     * temporarily detached by virtualization.
+     *
+     * @param e
+     * The focus event.
+     */
+    private onDocumentFocusIn = (e: FocusEvent): void => {
+        if (!this.hasDetachedFocus) {
+            return;
+        }
+
+        const target = e.target;
+
+        if (
+            target instanceof Node &&
+            this.tableElement.contains(target)
+        ) {
+            this.clearDetachedFocus();
+            return;
+        }
+
+        this.clearDetachedFocus(true);
+    };
+
+    /**
+     * Clears detached logical focus when the user interacts outside of the
+     * table while the focused cell is not rendered.
+     *
+     * @param e
+     * The pointer event.
+     */
+    private onDocumentPointerDown = (e: PointerEvent): void => {
+        if (!this.hasDetachedFocus) {
+            return;
+        }
+
+        const target = e.target;
+
+        if (
+            target instanceof Node &&
+            this.tableElement.contains(target)
+        ) {
+            return;
+        }
+
+        this.clearDetachedFocus(true);
     };
 
     /**
@@ -732,6 +793,7 @@ class Table {
 
         if (targetCell) {
             delete this.pendingFocusCursor;
+            this.clearDetachedFocus();
             targetCell.htmlElement.focus({
                 preventScroll: true
             });
@@ -744,6 +806,51 @@ class Table {
 
         this.pendingFocusCursor = [rowIndex, columnIndex];
         this.scrollToRow(rowIndex);
+    }
+
+    /**
+     * Marks the current logical focus as temporarily detached by
+     * virtualization.
+     */
+    public preserveFocusDuringDetach(): void {
+        this.hasDetachedFocus = true;
+    }
+
+    /**
+     * Returns whether the provided cell currently owns detached logical focus.
+     *
+     * @param rowIndex
+     * Target row index in the rendered/projected order.
+     *
+     * @param columnIndex
+     * Target column index.
+     */
+    public hasDetachedFocusAt(
+        rowIndex: number,
+        columnIndex: number
+    ): boolean {
+        const focusCursor = this.focusCursor;
+
+        return !!(
+            this.hasDetachedFocus &&
+            focusCursor?.[0] === rowIndex &&
+            focusCursor[1] === columnIndex
+        );
+    }
+
+    /**
+     * Clears detached logical focus state and optionally the logical focus
+     * cursor itself.
+     *
+     * @param clearFocusCursor
+     * Whether to also clear the logical focus cursor.
+     */
+    public clearDetachedFocus(clearFocusCursor: boolean = false): void {
+        this.hasDetachedFocus = false;
+
+        if (clearFocusCursor) {
+            delete this.focusCursor;
+        }
     }
 
     /**
@@ -775,6 +882,7 @@ class Table {
         };
 
         fireEvent(this, 'beforeRestoreCellFocus', eventObject, (): void => {
+            this.clearDetachedFocus();
             cell.htmlElement.focus({
                 preventScroll: true
             });
@@ -865,6 +973,12 @@ class Table {
     public destroy(): void {
         this.tbodyElement.removeEventListener('focus', this.onTBodyFocus);
         this.tbodyElement.removeEventListener('scroll', this.onScroll);
+        document.removeEventListener('focusin', this.onDocumentFocusIn, true);
+        document.removeEventListener(
+            'pointerdown',
+            this.onDocumentPointerDown,
+            true
+        );
         this.tbodyElement.removeEventListener('click', this.onCellClick);
         this.tbodyElement.removeEventListener('dblclick', this.onCellDblClick);
         this.tbodyElement.removeEventListener(

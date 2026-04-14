@@ -289,7 +289,9 @@ class TableCell extends Cell {
      * Only focus/blur remain on individual cells for focus management.
      */
     public override initEvents(): void {
-        this.cellEvents.push(['blur', (): void => this.onBlur()]);
+        this.cellEvents.push(['blur', (e): void => {
+            this.onBlur(e as FocusEvent);
+        }]);
         this.cellEvents.push(['focus', (): void => this.onFocus()]);
 
         this.cellEvents.forEach((pair): void => {
@@ -306,10 +308,31 @@ class TableCell extends Cell {
         const vp = this.row.viewport;
 
         delete vp.pendingFocusCursor;
+        vp.clearDetachedFocus();
         vp.focusCursor = [
             this.row.index,
             this.column.index
         ];
+    }
+
+    /**
+     * Handles the blur event on the cell.
+     *
+     * @param e
+     * The focus event object.
+     */
+    protected override onBlur(e?: FocusEvent): void {
+        if (
+            e &&
+            this.row.viewport.hasDetachedFocusAt(
+                this.row.index,
+                this.column.index
+            )
+        ) {
+            return;
+        }
+
+        super.onBlur();
     }
 
     /**
