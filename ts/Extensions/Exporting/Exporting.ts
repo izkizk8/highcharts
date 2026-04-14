@@ -91,6 +91,7 @@ import {
     splat
 } from '../../Shared/Utilities.js';
 import { error, uniqueKey } from '../../Core/Utilities.js';
+import { Palette } from '../../Core/Color/Palettes';
 
 AST.allowedAttributes.push(
     'data-z-index',
