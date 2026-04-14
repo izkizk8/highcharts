@@ -984,6 +984,7 @@ SeriesRegistry.registerSeriesType('bubble', BubbleSeries);
  *
  * */
 
+/** @internal */
 export default BubbleSeries;
 
 /* *
