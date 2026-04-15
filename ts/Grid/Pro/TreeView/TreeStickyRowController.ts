@@ -53,6 +53,8 @@ type StickyFocusState = {
 
 const stickyRowClassName = Globals.classNamePrefix + 'tree-sticky-row';
 const stickyBodyClassName = Globals.classNamePrefix + 'tree-sticky-body';
+const rowsContentNowrapClassName =
+    Globals.getClassName('rowsContentNowrap');
 const maxStickyRows = 10;
 
 
@@ -366,6 +368,7 @@ class TreeStickyRowController {
         let stickyBodyElement = this.stickyBodyElement;
 
         if (stickyBodyElement?.isConnected) {
+            this.syncStickyBodyClasses(stickyBodyElement);
             return stickyBodyElement;
         }
 
@@ -385,7 +388,26 @@ class TreeStickyRowController {
             this.ownsTablePosition = true;
         }
 
+        this.syncStickyBodyClasses(stickyBodyElement);
+
         return stickyBodyElement;
+    }
+
+    /**
+     * Synchronizes tbody-level classes that affect sticky row layout.
+     *
+     * @param stickyBodyElement
+     * Sticky body hosting overlay rows.
+     */
+    private syncStickyBodyClasses(
+        stickyBodyElement: HTMLTableSectionElement
+    ): void {
+        stickyBodyElement.classList.toggle(
+            rowsContentNowrapClassName,
+            this.viewport.tbodyElement.classList.contains(
+                rowsContentNowrapClassName
+            )
+        );
     }
 
     /**
@@ -1105,8 +1127,16 @@ class TreeStickyRowController {
                 tbodyElement.scrollWidth,
                 tbodyElement.clientWidth
             );
+            const tableRect =
+                this.viewport.tableElement.getBoundingClientRect();
+            const tbodyRect = tbodyElement.getBoundingClientRect();
+            const stickyTop = (
+                tbodyRect.top -
+                tableRect.top -
+                this.viewport.tableElement.clientTop
+            );
 
-            stickyBodyElement.style.top = tbodyElement.offsetTop + 'px';
+            stickyBodyElement.style.top = stickyTop + 'px';
             stickyBodyElement.style.width = bodyWidth + 'px';
             stickyBodyElement.style.height = this.getStickyRowsHeight() + 'px';
         }
