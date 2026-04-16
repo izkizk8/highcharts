@@ -650,7 +650,11 @@ class TreeStickyRowController {
             return row.translateY;
         }
 
-        return row.htmlElement.offsetTop;
+        const { tbodyElement } = this.viewport;
+        const rowRect = row.htmlElement.getBoundingClientRect();
+        const tbodyRect = tbodyElement.getBoundingClientRect();
+
+        return rowRect.top - tbodyRect.top + tbodyElement.scrollTop;
     }
 
     /**

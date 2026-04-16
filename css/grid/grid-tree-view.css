@@ -85,8 +85,6 @@
             --hcg-row-background,
             var(--ig-background, var(--ig-default-background))
         );
-
-    will-change: transform;
 }
 
 .hcg-table tbody tr.hcg-row-sticky.hcg-row-even {
@@ -98,18 +96,4 @@
                 var(--ig-background, var(--ig-default-background))
             )
         );
-}
-
-.hcg-table tbody tr.hcg-row-sticky td {
-    --ig-cell-base-background: var(--ig-row-background-current);
-    --ig-column-layer: var(--ig-cell-base-background);
-
-    position: relative;
-    z-index: 1;
-    background:
-        var(
-            --ig-cell-base-background,
-            var(--ig-background, var(--ig-default-background))
-        );
-    background-clip: padding-box;
 }
