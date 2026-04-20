@@ -559,8 +559,6 @@ class ChartAdditions {
                 series.options._ddSeriesId ||= ddSeriesId++;
                 series.options.colorIndex = series.colorIndex;
                 series.options._levelNumber ??= levelNumber; // #3182
-                series.userOptions._levelNumber ??=
-                    series.options._levelNumber;
 
                 if (last) {
                     levelSeries = last.levelSeries;
@@ -588,7 +586,6 @@ class ChartAdditions {
         // Crate the new series
         const newSeries = chart.addSeries(ddOptions, false);
         newSeries.options._levelNumber = levelNumber + 1;
-        newSeries.userOptions._levelNumber = levelNumber + 1;
         if (xAxis) {
             xAxis.userMin = xAxis.userMax = void 0;
             yAxis.userMin = yAxis.userMax = void 0;
@@ -667,9 +664,7 @@ class ChartAdditions {
 
                 if (level.levelNumber === levelToRemove) {
                     level.levelSeries.forEach((series): void => {
-                        const levelNumber =
-                            series.options?._levelNumber ??
-                            series.userOptions?._levelNumber;
+                        const levelNumber = series.options?._levelNumber;
                         // Not removed, not added as part of a multi-series
                         // drilldown
                         if (!chart.mapView) {
@@ -925,10 +920,7 @@ class ChartAdditions {
                         if (
                             chartSeries[seriesI].options.id ===
                                 level.lowerSeriesOptions.id &&
-                            (
-                                chartSeries[seriesI].options._levelNumber ??
-                                chartSeries[seriesI].userOptions._levelNumber
-                            ) ===
+                            chartSeries[seriesI].options._levelNumber ===
                                 levelNumber + 1
                         ) { // #3867
                             oldSeries = chartSeries[seriesI];
@@ -977,7 +969,6 @@ class ChartAdditions {
                         }
                     }
                     newSeries.options._levelNumber = levelNumber;
-                    newSeries.userOptions._levelNumber = levelNumber;
                 }
 
                 const seriesToRemove = oldSeries;
@@ -1398,6 +1389,7 @@ namespace Drilldown {
             addEvent(DrilldownChart, 'drillupall', onChartDrillupall);
             addEvent(DrilldownChart, 'render', onChartRender);
             addEvent(DrilldownChart, 'update', onChartUpdate);
+            addEvent(SeriesClass, 'update', onSeriesUpdate);
 
             highchartsDefaultOptions.drilldown = DrilldownDefaults;
 
@@ -1545,6 +1537,22 @@ namespace Drilldown {
 
         if (breadcrumbs && breadcrumbOptions) {
             breadcrumbs.update(breadcrumbOptions);
+        }
+    }
+
+    /** @internal */
+    function onSeriesUpdate(
+        this: Series,
+        e: { options: AnyRecord }
+    ): void {
+        const updateOptions = e.options;
+
+        if (
+            updateOptions &&
+            updateOptions._levelNumber === void 0 &&
+            this.options._levelNumber !== void 0
+        ) {
+            updateOptions._levelNumber = this.options._levelNumber;
         }
     }
 
