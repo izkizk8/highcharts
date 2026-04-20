@@ -314,6 +314,7 @@ function parseSvgString(svgString: string, className: string): SVGElement {
         fallback.classList.add(className);
         return fallback;
     }
+
     const clone = svg.cloneNode(true) as SVGElement;
     clone.classList.add(className);
     return clone;
@@ -362,6 +363,7 @@ function createSvgFromDefinition(
 
         svg.appendChild(path);
     }
+
     svg.classList.add(className);
     return svg;
 }
