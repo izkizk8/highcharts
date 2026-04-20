@@ -67,11 +67,13 @@ async function interceptFontFetches(page: Page) {
         const w = window;
         w.testFontFetchUrls = [];
 
-        window.fetch = (input: RequestInfo) => {
-            const url = String(typeof input === 'string' ? input : input.url);
+        window.fetch = (input: RequestInfo | URL) => {
+            const url = String(typeof input === 'string' ?
+                input :
+                (input instanceof URL ? input.href : input.url));
 
             if (url.indexOf('/fonts/') > -1 && url.indexOf('.woff2') > -1) {
-                w.testFontFetchUrls.push(url);
+                w.testFontFetchUrls?.push(url);
                 const buf = new Uint8Array([0, 1, 2, 3]).buffer;
                 return Promise.resolve(new Response(buf, {
                     status: 200,
@@ -104,12 +106,10 @@ async function runInlineFontsScenario(
                 }
             },
             subtitle: {
-                text: 'Custom chart subtitle',
-                className: 'my-subtitle'
+                text: 'Custom chart subtitle'
             },
             caption: {
-                text: 'Custom chart caption',
-                className: 'my-caption'
+                text: 'Custom chart caption'
             },
             series: [{
                 type: 'scatter',
@@ -137,7 +137,7 @@ async function runInlineFontsScenario(
     }, exportType);
 
     const fetchedFontUrls = await page.evaluate(
-        () => window.testFontFetchUrls
+        () => window.testFontFetchUrls || []
     );
 
     return fetchedFontUrls;
