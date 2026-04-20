@@ -72,6 +72,70 @@ QUnit.test('Boosted and not boosted series - visibility', function (assert) {
     );
 });
 
+QUnit.test(
+    'Shared boost marker group stays visible for hovered series, (#23338)',
+    function (assert) {
+        const chart = Highcharts.chart('container', {
+            boost: {
+                enabled: true
+            },
+            plotOptions: {
+                series: {
+                    boostThreshold: 1,
+                    states: {
+                        hover: {
+                            halo: {
+                                size: 10
+                            }
+                        }
+                    }
+                }
+            },
+            series: [{
+                data: [1, 3, 2, 4]
+            }, {
+                data: [4, 2, 5, 3]
+            }]
+        });
+
+        let visibleSeries = chart.series[1],
+            visiblePoint = visibleSeries.boost.getPoint(
+                visibleSeries.points[1]
+            );
+
+        assert.strictEqual(
+            chart.series[0].markerGroup,
+            visibleSeries.markerGroup,
+            'Boosted series should share one marker group.'
+        );
+
+        visiblePoint.setState('hover');
+
+        assert.notStrictEqual(
+            visibleSeries.halo?.attr('visibility'),
+            'hidden',
+            'Halo is visible before hiding the other series.'
+        );
+
+        chart.series[0].hide();
+        visibleSeries = chart.series[1];
+        visiblePoint = visibleSeries.boost.getPoint(visibleSeries.points[1]);
+        visiblePoint.setState('hover');
+
+        assert.notStrictEqual(
+            visibleSeries.markerGroup?.attr('visibility'),
+            'hidden',
+            'Shared marker group stays visible for the remaining series.'
+        );
+
+        assert.notStrictEqual(
+            visibleSeries.halo?.attr('visibility'),
+            'hidden',
+            'Halo stays visible after hiding another boosted series.'
+        );
+    }
+);
+
 QUnit.test('Marker group zooming and visibility', function (assert) {
     const chart = Highcharts.chart('container', {
         chart: {
