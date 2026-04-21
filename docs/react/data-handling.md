@@ -213,6 +213,7 @@ export default function ReduxChart() {
 ```
 
 ### Why use Redux with Highcharts React?
+
 Centralized Logic: Keep data fetching and transformation logic (like calculating averages or normalizing time series) in your Reducers/Thunks.
 
 Predictable Reactivity: Highcharts handles the complex DOM and SVG updates, while Redux handles the data integrity.
