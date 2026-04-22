@@ -25,7 +25,6 @@ import type Grid from '../../Core/Grid';
 import type { RowId } from '../../Core/Data/DataProvider';
 import type Table from '../../Core/Table/Table';
 import type { RestoreCellFocusEvent } from '../../Core/Table/Table';
-import type TableRow from '../../Core/Table/Body/TableRow';
 import type TableCell from '../../Core/Table/Body/TableCell';
 import type { TreeViewOptions } from './TreeViewTypes';
 import type {
@@ -77,160 +76,6 @@ type TreeToggleListeners = {
 const treeToggleAttribute = 'data-hcg-tree-toggle';
 const treeToggleSelector = '[' + treeToggleAttribute + ']';
 const treeToggleListeners = new WeakMap<Table, TreeToggleListeners>();
-
-/**
- * Returns sticky rows rendered by the TreeView overlay.
- *
- * @param table
- * Table viewport handling tree sticky rows.
- */
-function getRenderedStickyRows(table: Table): TableRow[] {
-    return table.treeStickyRowController?.getRenderedStickyRows() || [];
-}
-
-/**
- * Returns a rendered tree row from either the sticky overlay or the viewport
- * body.
- *
- * @param table
- * Table viewport handling tree rows.
- *
- * @param rowId
- * Target row ID.
- */
-function getRenderedTreeRow(
-    table: Table,
-    rowId: RowId
-): TableRow | undefined {
-    return getRenderedStickyRows(table).find(
-        (row): boolean => row.id === rowId
-    ) || table.getRow(rowId);
-}
-
-/**
- * Returns a rendered sticky cell for the provided row and column index.
- *
- * @param table
- * Table viewport handling tree sticky rows.
- *
- * @param rowIndex
- * Target row index in the projected row order.
- *
- * @param columnIndex
- * Target column index.
- */
-function getRenderedStickyCell(
-    table: Table,
-    rowIndex: number,
-    columnIndex: number
-): TableCell | undefined {
-    const stickyRow = getRenderedStickyRows(table).find(
-        (row): boolean => row.index === rowIndex
-    );
-
-    return stickyRow?.cells[columnIndex] as TableCell | undefined;
-}
-
-/**
- * Returns whether an element belongs to the main body or sticky overlay body.
- *
- * @param table
- * Table viewport handling the event.
- *
- * @param element
- * DOM element from the delegated event.
- */
-function isTreeEventElementWithinRoots(
-    table: Table,
-    element: Element
-): boolean {
-    return table.tbodyElement.contains(element) || (
-        table.treeStickyRowController
-            ?.getStickyBodyElement()
-            .contains(element) || false
-    );
-}
-
-/**
- * Resolves a cell from either the main tbody or the sticky overlay body.
- *
- * @param table
- * Table viewport handling the delegated event.
- *
- * @param element
- * Event target that originated within a table cell.
- */
-function getTreeCellFromElement(
-    table: Table,
-    element: EventTarget | null
-): TableCell | undefined {
-    if (!(element instanceof Element)) {
-        return;
-    }
-
-    const td = element.closest('td');
-    if (!td) {
-        return;
-    }
-
-    const tr = td.parentElement;
-    if (!tr) {
-        return;
-    }
-
-    const stickyRow = getRenderedStickyRows(table).find(
-        (row): boolean => row.htmlElement === tr
-    );
-
-    if (stickyRow) {
-        const cellIndex = Array.prototype.indexOf.call(tr.children, td);
-        return stickyRow.cells[cellIndex] as TableCell | undefined;
-    }
-
-    return table.getCellFromElement(element) as TableCell | undefined;
-}
-
-/**
- * Focuses a rendered sticky cell when present, otherwise falls back to the
- * generic viewport row focusing logic.
- *
- * @param table
- * Table viewport handling the focus request.
- *
- * @param rowIndex
- * Target row index in the projected row order.
- *
- * @param columnIndex
- * Target column index.
- */
-function focusTreeCellByRowIndex(
-    table: Table,
-    rowIndex: number,
-    columnIndex: number
-): void {
-    if (
-        columnIndex < 0 ||
-        columnIndex >= table.columns.length
-    ) {
-        return;
-    }
-
-    const stickyCell = getRenderedStickyCell(
-        table,
-        rowIndex,
-        columnIndex
-    );
-
-    if (stickyCell) {
-        delete table.pendingFocusCursor;
-        stickyCell.htmlElement.focus({
-            preventScroll: true
-        });
-        return;
-    }
-
-    table.focusCellByRowIndex(rowIndex, columnIndex);
-}
 
 /**
  * Handles tree-aware keyboard navigation for body and sticky rows.
@@ -291,7 +136,12 @@ function handleTreeBodyNavigation(
         return true;
     }
 
-    focusTreeCellByRowIndex(table, nextRowIndex, nextColumnIndex);
+    const stickyRowController = table.treeStickyRowController;
+    if (stickyRowController) {
+        stickyRowController.focusCellByRowIndex(nextRowIndex, nextColumnIndex);
+    } else {
+        table.focusCellByRowIndex(nextRowIndex, nextColumnIndex);
+    }
     return true;
 }
 
@@ -306,8 +156,7 @@ function onTableBeforeRestoreCellFocus(
     this: Table,
     event: RestoreCellFocusEvent
 ): void {
-    const stickyCell = getRenderedStickyCell(
-        this,
+    const stickyCell = this.treeStickyRowController?.getRenderedStickyCell(
         event.rowIndex,
         event.columnIndex
     );
@@ -437,7 +286,8 @@ function getTreeToggleContext(
     table: Table,
     element: Element
 ): TreeToggleContext | undefined {
-    const cell = getTreeCellFromElement(table, element);
+    const cell = table.treeStickyRowController?.getCellFromElement(element) ||
+        (table.getCellFromElement(element) as TableCell | undefined);
     if (!cell) {
         return;
     }
@@ -507,9 +357,9 @@ function restoreTreeCellFocus(
 ): void {
     const columnIndex = context.cell.column.index;
     const viewport = context.cell.row.viewport;
-    const restoredCell = getRenderedTreeRow(
-        viewport,
-        context.rowId
+    const restoredCell = (
+        viewport.treeStickyRowController?.getRenderedRow(context.rowId) ||
+        viewport.getRow(context.rowId)
     )?.cells[columnIndex];
 
     if (restoredCell) {
@@ -524,7 +374,12 @@ function restoreTreeCellFocus(
         ?.rowIds.indexOf(context.rowId);
 
     if (typeof rowIndex === 'number' && rowIndex > -1) {
-        focusTreeCellByRowIndex(viewport, rowIndex, columnIndex);
+        const stickyRowController = viewport.treeStickyRowController;
+        if (stickyRowController) {
+            stickyRowController.focusCellByRowIndex(rowIndex, columnIndex);
+        } else {
+            viewport.focusCellByRowIndex(rowIndex, columnIndex);
+        }
     }
 }
 
@@ -570,7 +425,10 @@ async function restoreTreeToggleAnchor(
     }
 
     const viewport = context.cell.row.viewport;
-    const renderedRow = getRenderedTreeRow(viewport, context.rowId);
+    const renderedRow = (
+        viewport.treeStickyRowController?.getRenderedRow(context.rowId) ||
+        viewport.getRow(context.rowId)
+    );
 
     if (!renderedRow?.htmlElement.isConnected) {
         return;
@@ -671,8 +529,9 @@ async function toggleTreeRow(
  * Adds delegated listeners for tree toggle buttons and keyboard shortcuts.
  */
 function onTableBeforeInit(this: Table): void {
-    this.treeStickyRowController = new TreeStickyRowController(this);
-    const stickyBody = this.treeStickyRowController.getStickyBodyElement();
+    const stickyRowController = new TreeStickyRowController(this);
+    this.treeStickyRowController = stickyRowController;
+    const stickyBody = stickyRowController.getStickyBodyElement();
 
     const clickListener = (event: MouseEvent): void => {
         if (!(event.target instanceof Element)) {
@@ -682,7 +541,7 @@ function onTableBeforeInit(this: Table): void {
         const toggleButton = event.target.closest(treeToggleSelector);
         if (
             toggleButton &&
-            isTreeEventElementWithinRoots(this, toggleButton)
+            stickyRowController.containsElement(toggleButton)
         ) {
             event.preventDefault();
             event.stopImmediatePropagation();
@@ -697,7 +556,7 @@ function onTableBeforeInit(this: Table): void {
         }
 
         if (event.currentTarget === stickyBody) {
-            getTreeCellFromElement(this, event.target)?.onClick();
+            stickyRowController.getCellFromElement(event.target)?.onClick();
         }
     };
 
@@ -713,7 +572,9 @@ function onTableBeforeInit(this: Table): void {
         const context = getTreeToggleContext(this, event.target);
         if (!context) {
             if (event.currentTarget === stickyBody) {
-                const cell = getTreeCellFromElement(this, event.target);
+                const cell = stickyRowController.getCellFromElement(
+                    event.target
+                );
                 if (cell && 'onDblClick' in cell) {
                     (
                         cell as unknown as { onDblClick(e: MouseEvent): void }
@@ -738,7 +599,7 @@ function onTableBeforeInit(this: Table): void {
         const toggleButton = event.target.closest(treeToggleSelector);
         if (
             toggleButton &&
-            isTreeEventElementWithinRoots(this, toggleButton)
+            stickyRowController.containsElement(toggleButton)
         ) {
             const context = getTreeToggleContext(this, toggleButton);
             if (!context) {
@@ -751,7 +612,7 @@ function onTableBeforeInit(this: Table): void {
         }
 
         if (event.currentTarget === stickyBody) {
-            const cell = getTreeCellFromElement(this, event.target);
+            const cell = stickyRowController.getCellFromElement(event.target);
             if (cell && 'onMouseDown' in cell) {
                 (
                     cell as unknown as { onMouseDown(e: MouseEvent): void }
@@ -761,7 +622,7 @@ function onTableBeforeInit(this: Table): void {
     };
 
     const keyDownListener = (event: KeyboardEvent): void => {
-        const cell = getTreeCellFromElement(this, event.target);
+        const cell = stickyRowController.getCellFromElement(event.target);
 
         if (
             (

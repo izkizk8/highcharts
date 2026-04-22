@@ -19,6 +19,7 @@
 
 import type { RowId } from '../../Core/Data/DataProvider';
 import type Table from '../../Core/Table/Table';
+import type TableCell from '../../Core/Table/Body/TableCell';
 import type { TreeProjectionState } from './TreeViewTypes';
 
 import TableRow from '../../Core/Table/Body/TableRow.js';
@@ -196,6 +197,119 @@ class TreeStickyRowController {
      */
     public getStickyBodyElement(): HTMLTableSectionElement {
         return this.ensureStickyBody();
+    }
+
+    /**
+     * Returns whether an element belongs to the viewport body or sticky body.
+     *
+     * @param element
+     * DOM element to resolve.
+     */
+    public containsElement(element: Element): boolean {
+        return this.viewport.tbodyElement.contains(element) ||
+            this.ensureStickyBody().contains(element);
+    }
+
+    /**
+     * Resolves a cell from either the viewport body or sticky body.
+     *
+     * @param element
+     * Event target that originated within a table cell.
+     */
+    public getCellFromElement(
+        element: EventTarget | null
+    ): TableCell | undefined {
+        if (!(element instanceof Element)) {
+            return;
+        }
+
+        const td = element.closest('td');
+        if (!td) {
+            return;
+        }
+
+        const tr = td.parentElement;
+        if (!tr) {
+            return;
+        }
+
+        const stickyRow = this.getRenderedStickyRows().find(
+            (row): boolean => row.htmlElement === tr
+        );
+
+        if (stickyRow) {
+            const cellIndex = Array.prototype.indexOf.call(tr.children, td);
+            return stickyRow.cells[cellIndex] as TableCell | undefined;
+        }
+
+        return this.viewport.getCellFromElement(element) as (
+            TableCell | undefined
+        );
+    }
+
+    /**
+     * Returns a rendered row from either the sticky body or viewport body.
+     *
+     * @param rowId
+     * Target row ID.
+     */
+    public getRenderedRow(rowId: RowId): TableRow | undefined {
+        return this.getRenderedStickyRows().find(
+            (row): boolean => row.id === rowId
+        ) || this.viewport.getRow(rowId);
+    }
+
+    /**
+     * Returns a rendered sticky cell for the provided row and column index.
+     *
+     * @param rowIndex
+     * Target row index in the projected row order.
+     *
+     * @param columnIndex
+     * Target column index.
+     */
+    public getRenderedStickyCell(
+        rowIndex: number,
+        columnIndex: number
+    ): TableCell | undefined {
+        const stickyRow = this.getRenderedStickyRows().find(
+            (row): boolean => row.index === rowIndex
+        );
+
+        return stickyRow?.cells[columnIndex] as TableCell | undefined;
+    }
+
+    /**
+     * Focuses a sticky cell when present, otherwise falls back to the viewport.
+     *
+     * @param rowIndex
+     * Target row index in the projected row order.
+     *
+     * @param columnIndex
+     * Target column index.
+     */
+    public focusCellByRowIndex(
+        rowIndex: number,
+        columnIndex: number
+    ): void {
+        if (
+            columnIndex < 0 ||
+            columnIndex >= this.viewport.columns.length
+        ) {
+            return;
+        }
+
+        const stickyCell = this.getRenderedStickyCell(rowIndex, columnIndex);
+
+        if (stickyCell) {
+            delete this.viewport.pendingFocusCursor;
+            stickyCell.htmlElement.focus({
+                preventScroll: true
+            });
+            return;
+        }
+
+        this.viewport.focusCellByRowIndex(rowIndex, columnIndex);
     }
 
     /**
