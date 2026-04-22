@@ -54,6 +54,7 @@ export interface NormalizedTreeViewOptions {
     input: NormalizedTreeInputOptions;
     treeColumn?: string;
     expandedRowIds: TreeExpandedRowIds;
+    stickyParents: boolean;
 }
 
 const defaultParentIdInput: NormalizedTreeInputParentIdOptions = {
@@ -104,6 +105,7 @@ export function normalizeTreeViewOptions(
             expandedRowIds === 'all' ?
                 expandedRowIds :
                 expandedRowIds.slice()
-        )
+        ),
+        stickyParents: treeView.stickyParents !== false
     };
 }

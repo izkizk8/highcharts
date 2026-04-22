@@ -724,18 +724,38 @@ class RowsVirtualizer {
                 rows.push(alwaysLastRow);
             }
 
-            // Focus the cell if the focus cursor is set.
-            if (vp.focusCursor) {
+            // Focus the cell if the focus cursor is set
+            const hadPendingFocusCursor = !!vp.pendingFocusCursor;
+            if (vp.pendingFocusCursor) {
+                const [rowIndex, columnIndex] = vp.pendingFocusCursor;
+                const row = rows.find(
+                    (row): boolean => row.index === rowIndex
+                );
+
+                if (row) {
+                    delete vp.pendingFocusCursor;
+                    vp.restoreRenderedCellFocus(
+                        row.cells[columnIndex],
+                        rowIndex,
+                        columnIndex
+                    );
+
+                    if (hadPendingFocusCursor) {
+                        vp.ensureRowFullyVisible(row);
+                    }
+                }
+            } else if (vp.focusCursor) {
                 const focusCursor = vp.focusCursor;
                 if (!focusCursor.bodySectionId) {
                     const focusedRow = rows.find((row): boolean =>
                         row.id === focusCursor.rowId
                     );
                     if (focusedRow) {
-                        focusedRow.cells[focusCursor.columnIndex]
-                            ?.htmlElement.focus({
-                                preventScroll: true
-                            });
+                        vp.restoreRenderedCellFocus(
+                            focusedRow.cells[focusCursor.columnIndex],
+                            focusedRow.index,
+                            focusCursor.columnIndex
+                        );
                     }
                 }
             }
@@ -887,6 +907,49 @@ class RowsVirtualizer {
     }
 
     /**
+     * Estimates the current top offset of a row in the virtualized scroll
+     * space, accounting for the active scroll compression offset.
+     *
+     * @param index
+     * The row index in the projected data order.
+     *
+     * @returns
+     * The estimated top offset in pixels.
+     */
+    public getEstimatedRowTop(index: number): number {
+        const topOffset = index * this.defaultRowHeight;
+
+        if (
+            !this.viewport.virtualRows ||
+            this.gridHeightOverflow <= 0
+        ) {
+            return topOffset;
+        }
+
+        return Math.floor(topOffset - this.scrollOffset);
+    }
+
+    /**
+     * Estimates the current bottom offset of a row in the virtualized scroll
+     * space.
+     *
+     * @param index
+     * The row index in the projected data order.
+     *
+     * @param rowHeight
+     * The height of the row.
+     *
+     * @returns
+     * The estimated bottom offset in pixels.
+     */
+    public getEstimatedRowBottom(
+        index: number,
+        rowHeight: number = this.defaultRowHeight
+    ): number {
+        return this.getEstimatedRowTop(index) + rowHeight;
+    }
+
+    /**
      * Measures the height of the first rendered row's first cell.
      *
      * @returns
@@ -986,6 +1049,18 @@ class RowsVirtualizer {
      * The row to pool.
      */
     private poolRow(row: TableRow): void {
+        const focusCursor = this.viewport.focusCursor;
+        const activeElement = document.activeElement;
+
+        if (
+            focusCursor &&
+            focusCursor.rowId === row.id &&
+            activeElement instanceof Element &&
+            row.htmlElement.contains(activeElement)
+        ) {
+            this.viewport.preserveFocusDuringDetach();
+        }
+
         row.htmlElement.remove();
         if (this.rowPool.length < RowsVirtualizer.MAX_POOL_SIZE) {
             this.rowPool.push(row);

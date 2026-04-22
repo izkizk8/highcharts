@@ -7,13 +7,20 @@ function installGridDOMGlobals(
     win: any,
     doc: Document
 ): void {
-    global.window = win;
-    global.document = doc;
-    global.ResizeObserver = win.ResizeObserver;
-    global.requestAnimationFrame = (callback: FrameRequestCallback): number => {
+    const requestAnimationFrame = (
+        callback: FrameRequestCallback
+    ): number => {
         callback(0);
         return 0;
     };
+
+    global.window = win;
+    global.document = doc;
+    global.ResizeObserver = win.ResizeObserver;
+    global.requestAnimationFrame = requestAnimationFrame;
+    global.cancelAnimationFrame = (): void => {};
+    win.requestAnimationFrame = requestAnimationFrame;
+    win.cancelAnimationFrame = (): void => {};
 }
 
 describe('TreeProjectionController', () => {

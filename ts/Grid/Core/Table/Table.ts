@@ -140,10 +140,22 @@ class Table {
     public focusCursor?: FocusCursor;
 
     /**
+     * Pending focus target used while virtualization scrolls a body row into
+     * the render window.
+     */
+    public pendingFocusCursor?: [number, number];
+
+    /**
      * The only cell that is to be focusable using tab key - a table focus
      * entry point.
      */
     public focusAnchorCell?: Cell;
+
+    /**
+     * Whether the current logical focus belongs to a body cell that has been
+     * detached from the DOM by virtualization.
+     */
+    private hasDetachedFocus = false;
 
     /**
      * The flag that indicates if the table rows are virtualized.
@@ -205,6 +217,12 @@ class Table {
 
         this.tbodyElement.addEventListener('scroll', this.onScroll);
         this.addBodyEventListeners(this.tbodyElement);
+        document.addEventListener('focusin', this.onDocumentFocusIn, true);
+        document.addEventListener(
+            'pointerdown',
+            this.onDocumentPointerDown,
+            true
+        );
     }
 
     /* *
@@ -558,6 +576,55 @@ class Table {
     };
 
     /**
+     * Handles document focus changes while a logically focused cell is
+     * temporarily detached by virtualization.
+     *
+     * @param e
+     * The focus event.
+     */
+    private onDocumentFocusIn = (e: FocusEvent): void => {
+        if (!this.hasDetachedFocus) {
+            return;
+        }
+
+        const target = e.target;
+
+        if (
+            target instanceof Node &&
+            this.tableElement.contains(target)
+        ) {
+            this.clearDetachedFocus();
+            return;
+        }
+
+        this.clearDetachedFocus(true);
+    };
+
+    /**
+     * Clears detached logical focus when the user interacts outside of the
+     * table while the focused cell is not rendered.
+     *
+     * @param e
+     * The pointer event.
+     */
+    private onDocumentPointerDown = (e: PointerEvent): void => {
+        if (!this.hasDetachedFocus) {
+            return;
+        }
+
+        const target = e.target;
+
+        if (
+            target instanceof Node &&
+            this.tableElement.contains(target)
+        ) {
+            return;
+        }
+
+        this.clearDetachedFocus(true);
+    };
+
+    /**
      * Delegated click handler for cells.
      * @param e Mouse event
      */
@@ -725,10 +792,13 @@ class Table {
      * Try it: {@link https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/grid-lite/basic/scroll-to-row | Scroll to row}
      */
     public scrollToRow(index: number): void {
+        const viewportTopInset = this.getViewportTopInset();
+
         if (this.virtualRows) {
             this.tbodyElement.scrollTop = Math.max(
                 0,
-                index * this.rowsVirtualizer.defaultRowHeight
+                index * this.rowsVirtualizer.defaultRowHeight -
+                viewportTopInset
             );
             return;
         }
@@ -748,9 +818,190 @@ class Table {
 
         const firstRowTop = firstRow.getBoundingClientRect().top;
 
-        this.tbodyElement.scrollTop = (
-            targetRow.getBoundingClientRect().top
-        ) - firstRowTop;
+        this.tbodyElement.scrollTop = Math.max(
+            0,
+            targetRow.getBoundingClientRect().top -
+            firstRowTop -
+            viewportTopInset
+        );
+    }
+
+    /**
+     * Returns the top inset of the visible table body area. Composed modules
+     * can extend this via the `getViewportTopInset` event.
+     */
+    public getViewportTopInset(): number {
+        const eventObject = {
+            top: 0
+        };
+
+        fireEvent(this, 'getViewportTopInset', eventObject);
+        return eventObject.top;
+    }
+
+    /**
+     * Ensures that a row is fully visible inside the scrollable body.
+     *
+     * @param row
+     * The row to reveal.
+     */
+    public ensureRowFullyVisible(row: TableRow): void {
+        if (
+            !row.htmlElement.isConnected ||
+            row.htmlElement.parentElement !== this.tbodyElement
+        ) {
+            return;
+        }
+
+        const tbodyRect = this.tbodyElement.getBoundingClientRect();
+        const rowRect = row.htmlElement.getBoundingClientRect();
+        const visibleTop = tbodyRect.top + this.getViewportTopInset();
+        const visibleBottom = tbodyRect.bottom;
+        const visibleHeight = Math.max(visibleBottom - visibleTop, 0);
+        const maxScrollTop = Math.max(
+            this.tbodyElement.scrollHeight - this.tbodyElement.clientHeight,
+            0
+        );
+        let nextScrollTop = this.tbodyElement.scrollTop;
+
+        if (rowRect.top < visibleTop) {
+            nextScrollTop -= visibleTop - rowRect.top;
+        } else if (rowRect.bottom > visibleBottom) {
+            if (rowRect.height >= visibleHeight) {
+                nextScrollTop += rowRect.top - visibleTop;
+            } else {
+                nextScrollTop += rowRect.bottom - visibleBottom;
+            }
+        }
+
+        this.tbodyElement.scrollTop = Math.max(
+            0,
+            Math.min(nextScrollTop, maxScrollTop)
+        );
+    }
+
+    /**
+     * Focuses a body cell by its row index in the rendered table order.
+     *
+     * @param rowIndex
+     * The target row index.
+     *
+     * @param columnIndex
+     * The target column index.
+     */
+    public focusCellByRowIndex(rowIndex: number, columnIndex: number): void {
+        if (
+            columnIndex < 0 ||
+            columnIndex >= this.columns.length ||
+            rowIndex < 0 ||
+            rowIndex >= this.rowsVirtualizer.rowCount
+        ) {
+            return;
+        }
+
+        const targetRow = this.rows.find(
+            (row): boolean => row.index === rowIndex
+        );
+        const targetCell = targetRow?.cells[columnIndex];
+
+        if (targetCell) {
+            delete this.pendingFocusCursor;
+            this.clearDetachedFocus();
+            targetCell.htmlElement.focus({
+                preventScroll: true
+            });
+
+            if (targetRow?.htmlElement.parentElement === this.tbodyElement) {
+                this.ensureRowFullyVisible(targetRow);
+            }
+            return;
+        }
+
+        this.pendingFocusCursor = [rowIndex, columnIndex];
+        this.scrollToRow(rowIndex);
+    }
+
+    /**
+     * Marks the current logical focus as temporarily detached by
+     * virtualization.
+     */
+    public preserveFocusDuringDetach(): void {
+        this.hasDetachedFocus = true;
+    }
+
+    /**
+     * Returns whether the provided cell currently owns detached logical focus.
+     *
+     * @param rowId
+     * Target row ID.
+     *
+     * @param columnIndex
+     * Target column index.
+     */
+    public hasDetachedFocusAt(
+        rowId: RowId | undefined,
+        columnIndex: number
+    ): boolean {
+        const focusCursor = this.focusCursor;
+
+        return !!(
+            this.hasDetachedFocus &&
+            rowId !== void 0 &&
+            focusCursor &&
+            focusCursor.rowId === rowId &&
+            focusCursor.columnIndex === columnIndex
+        );
+    }
+
+    /**
+     * Clears detached logical focus state and optionally the logical focus
+     * cursor itself.
+     *
+     * @param clearFocusCursor
+     * Whether to also clear the logical focus cursor.
+     */
+    public clearDetachedFocus(clearFocusCursor: boolean = false): void {
+        this.hasDetachedFocus = false;
+
+        if (clearFocusCursor) {
+            delete this.focusCursor;
+        }
+    }
+
+    /**
+     * Restores focus to a rendered body cell. Composed modules can prevent the
+     * default focus transfer via the `beforeRestoreCellFocus` event.
+     *
+     * @param cell
+     * Rendered body cell to focus.
+     *
+     * @param rowIndex
+     * Target row index in the rendered/projected order.
+     *
+     * @param columnIndex
+     * Target column index.
+     */
+    public restoreRenderedCellFocus(
+        cell: Cell | undefined,
+        rowIndex: number,
+        columnIndex: number
+    ): void {
+        if (!cell) {
+            return;
+        }
+
+        const eventObject: RestoreCellFocusEvent = {
+            cell,
+            columnIndex,
+            rowIndex
+        };
+
+        fireEvent(this, 'beforeRestoreCellFocus', eventObject, (): void => {
+            this.clearDetachedFocus();
+            cell.htmlElement.focus({
+                preventScroll: true
+            });
+        });
     }
 
     /**
@@ -847,6 +1098,12 @@ class Table {
      */
     public destroy(): void {
         this.tbodyElement.removeEventListener('scroll', this.onScroll);
+        document.removeEventListener('focusin', this.onDocumentFocusIn, true);
+        document.removeEventListener(
+            'pointerdown',
+            this.onDocumentPointerDown,
+            true
+        );
         this.removeBodyEventListeners(this.tbodyElement);
         for (const section of this.bodySections) {
             this.removeBodyEventListeners(
@@ -1034,12 +1291,16 @@ class Table {
                 }
 
                 if (defer) {
-                    this.scrollToRow(rowIndex);
+                    this.focusCellByRowIndex(rowIndex, cursor.columnIndex);
+                    return;
                 }
 
-                this.getRenderedRowByIndex(rowIndex)
-                    ?.cells[cursor.columnIndex]
-                    ?.htmlElement.focus();
+                const row = this.getRenderedRowByIndex(rowIndex);
+                this.restoreRenderedCellFocus(
+                    row?.cells[cursor.columnIndex],
+                    rowIndex,
+                    cursor.columnIndex
+                );
             });
         };
 
@@ -1083,6 +1344,17 @@ export interface ViewportStateMetadata {
     scrollLeft: number;
     columnResizing: ColumnResizingMode;
     focusCursor?: FocusCursor;
+}
+
+/**
+ * Event object emitted before focus is restored to a rendered body cell.
+ */
+export interface RestoreCellFocusEvent {
+    cell: Cell;
+    columnIndex: number;
+    rowIndex: number;
+    defaultPrevented?: boolean;
+    preventDefault?: () => void;
 }
 
 

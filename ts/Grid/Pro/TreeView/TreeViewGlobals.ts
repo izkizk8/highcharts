@@ -31,6 +31,8 @@ import Globals from '../../Core/Globals.js';
  * */
 
 export const classNames = {
+    tbodySticky: Globals.classNamePrefix + 'tbody-sticky',
+    tbodyStickyActive: Globals.classNamePrefix + 'tbody-sticky-active',
     tree: Globals.classNamePrefix + 'tree',
     toggle: Globals.classNamePrefix + 'tree-toggle',
     toggleIcon: Globals.classNamePrefix + 'tree-toggle-icon',

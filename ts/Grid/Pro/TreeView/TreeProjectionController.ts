@@ -75,8 +75,6 @@ class TreeProjectionController {
 
     private readonly grid: Grid;
 
-    private options?: NormalizedTreeViewOptions;
-
     private indexCache?: TreeIndexBuildResult;
 
     private projectionStateCache?: TreeProjectionState;
@@ -115,9 +113,11 @@ class TreeProjectionController {
      */
     public sync(): void {
         const dataOptions = this.getDataOptions();
-        const options = this.options = normalizeTreeViewOptions(
-            dataOptions?.treeView
-        );
+        const options = normalizeTreeViewOptions(dataOptions?.treeView);
+
+        if (dataOptions) {
+            dataOptions.treeView = options;
+        }
 
         if (!options) {
             this.clearCache();
@@ -174,10 +174,12 @@ class TreeProjectionController {
     }
 
     /**
-     * Returns normalized TreeView options.
+     * Returns normalized TreeView options from the Grid options.
      */
-    public getOptions(): NormalizedTreeViewOptions | undefined {
-        return this.options;
+    public get options(): NormalizedTreeViewOptions | undefined {
+        return this.getDataOptions()?.treeView as (
+            NormalizedTreeViewOptions | undefined
+        );
     }
 
     /**
@@ -368,7 +370,6 @@ class TreeProjectionController {
      * Destroys controller state.
      */
     public destroy(): void {
-        this.options = void 0;
         this.clearTreeRowMetaState();
         this.expansionStateSeedKey = void 0;
         this.clearCache();
@@ -771,7 +772,11 @@ class TreeProjectionController {
         const projectedRowIds: RowId[] = [];
         const rowsById = new Map<RowId, TreeProjectionRowState>();
 
-        const visitNode = (nodeId: RowId, depth: number): void => {
+        const visitNode = (
+            nodeId: RowId,
+            depth: number,
+            parentId: RowId | null
+        ): void => {
             projectedRowIds.push(nodeId);
 
             const children = childrenByParent.get(nodeId);
@@ -791,6 +796,7 @@ class TreeProjectionController {
 
             const rowState: TreeProjectionRowState = {
                 id: nodeId,
+                parentId,
                 depth,
                 hasChildren,
                 isExpanded
@@ -807,12 +813,45 @@ class TreeProjectionController {
             }
 
             for (let i = 0, iEnd = children.length; i < iEnd; ++i) {
-                visitNode(children[i], depth + 1);
+                visitNode(children[i], depth + 1, nodeId);
             }
         };
 
         for (let i = 0, iEnd = rootIds.length; i < iEnd; ++i) {
-            visitNode(rootIds[i], 0);
+            visitNode(rootIds[i], 0, null);
+        }
+
+        const rowStateStack: TreeProjectionRowState[] = [];
+        let lastVisitedRowId: RowId | undefined;
+
+        for (let i = 0, iEnd = projectedRowIds.length; i < iEnd; ++i) {
+            const rowState = rowsById.get(projectedRowIds[i]);
+            if (!rowState) {
+                continue;
+            }
+
+            while (rowStateStack.length > rowState.depth) {
+                const completedState = rowStateStack.pop();
+                if (
+                    completedState &&
+                    typeof lastVisitedRowId !== 'undefined'
+                ) {
+                    completedState.lastVisibleDescendantId = lastVisitedRowId;
+                }
+            }
+
+            rowStateStack.push(rowState);
+            lastVisitedRowId = rowState.id;
+        }
+
+        while (rowStateStack.length) {
+            const completedState = rowStateStack.pop();
+            if (
+                completedState &&
+                typeof lastVisitedRowId !== 'undefined'
+            ) {
+                completedState.lastVisibleDescendantId = lastVisitedRowId;
+            }
         }
 
         this.injectedAncestorIds = injectedAncestorIds;
