@@ -427,9 +427,16 @@ QUnit.test('Arrow marker color follows stroke (#22356)', function (assert) {
     });
 
     var shapeStrokeOnly = chart.annotations[0].shapes[0],
-        markerPathStrokeOnly = shapeStrokeOnly.markerEnd.element
-            .querySelector('path');
+        markerStrokeOnly = document.getElementById(
+            shapeStrokeOnly.markerEnd.id
+        ),
+        markerPathStrokeOnly = markerStrokeOnly &&
+            markerStrokeOnly.querySelector('path');
 
+    assert.ok(
+        markerPathStrokeOnly,
+        'Marker path element should exist for stroke-only shape.'
+    );
     assert.strictEqual(
         markerPathStrokeOnly.getAttribute('fill'),
         '#ff0000',
@@ -442,8 +449,11 @@ QUnit.test('Arrow marker color follows stroke (#22356)', function (assert) {
     );
 
     var shapeWithFill = chart.annotations[0].shapes[1],
-        markerPathWithFill = shapeWithFill.markerEnd.element
-            .querySelector('path');
+        markerWithFill = document.getElementById(
+            shapeWithFill.markerEnd.id
+        ),
+        markerPathWithFill = markerWithFill &&
+            markerWithFill.querySelector('path');
 
     assert.strictEqual(
         markerPathWithFill.getAttribute('fill'),
