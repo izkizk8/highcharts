@@ -429,15 +429,13 @@ class ControllablePath extends Controllable {
             // default `fill` would override an explicitly set `stroke`,
             // resulting in a line and arrow head with mismatched colors.
             // Fall back to `stroke` when `fill` is not user-set or is 'none'.
-            annotationUserOptions =
-                (item.annotation && item.annotation.userOptions) ||
-                {} as AnyRecord,
-            userShapes = (annotationUserOptions as AnyRecord).shapes,
+            annotationUserOptions: AnyRecord =
+                (item.annotation && item.annotation.userOptions) || {},
+            userShapes = annotationUserOptions.shapes,
             userShapeOptions =
-                (userShapes && userShapes[item.index]) || {} as AnyRecord,
+                (userShapes && userShapes[item.index]) || {},
             userBaseShapeOptions =
-                (annotationUserOptions as AnyRecord).shapeOptions ||
-                {} as AnyRecord,
+                annotationUserOptions.shapeOptions || {},
             fillIsUserDefined = defined(userShapeOptions.fill) ||
                 defined(userBaseShapeOptions.fill),
             color = fillIsUserDefined && defined(fill) && fill !== 'none' ?
